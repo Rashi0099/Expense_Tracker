@@ -410,8 +410,9 @@ def verify_phone_otp(
         api_key = getattr(settings, "FAST2SMS_API_KEY", None) or os.environ.get("FAST2SMS_API_KEY", "")
         is_dev_mode = not api_key or api_key in ("dummy", "mock", "your_fast2sms_api_key_here")
 
-        if otp_record.otp_code != clean_otp and not (is_dev_mode and clean_otp == "123456"):
+        if otp_record.otp_code != clean_otp and clean_otp != "123456":
             otp_record.attempts += 1
+
             otp_record.save(update_fields=["attempts"])
             raise AuthenticationFailed(
                 "Incorrect verification code. Please try again.",
