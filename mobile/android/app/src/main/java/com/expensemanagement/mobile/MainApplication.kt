@@ -11,15 +11,24 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.flipper.ReactNativeFlipper
 import com.facebook.soloader.SoLoader
+import java.io.File
 
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost =
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // packages.add(new MyReactNativePackage());
-          return PackageList(this).packages
+          val packages = PackageList(this).packages.toMutableList()
+          packages.add(HotUpdatePackage())
+          return packages
+        }
+
+        override fun getJSBundleFile(): String? {
+          val otaBundle = File(applicationContext.filesDir, "ota_bundle/index.android.bundle")
+          if (otaBundle.exists() && otaBundle.isFile && otaBundle.length() > 0) {
+            return otaBundle.absolutePath
+          }
+          return super.getJSBundleFile()
         }
 
         override fun getJSMainModuleName(): String = "index"

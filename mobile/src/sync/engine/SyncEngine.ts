@@ -322,7 +322,7 @@ export class SyncEngine {
                   `UPDATE budgets SET version = ? WHERE id = ? AND user_id = ?`,
                   [proc.serverVersion, proc.entityId, userId]
                 );
-              } else if (entityType === 'RECURRING_EXPENSE') {
+              } else if (entityType === 'RECURRING') {
                 await tx.executeSql(
                   `UPDATE recurring_expenses SET version = ? WHERE id = ? AND user_id = ?`,
                   [proc.serverVersion, proc.entityId, userId]

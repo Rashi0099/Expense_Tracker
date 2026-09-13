@@ -12,6 +12,8 @@ import { ENV } from '../../app/config/env';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 import { NotificationService, NotificationSettings } from '../../services/notificationService';
 import { useScreenPrivacy } from '../../components/common/ScreenPrivacyShield';
+import { hotUpdateService, UpdateCheckResult } from '../../services/HotUpdateService';
+import { HotUpdateModal } from '../../components/common/HotUpdateModal';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -33,6 +35,11 @@ export const SettingsScreen: React.FC = () => {
     budgetAlertsEnabled: true,
   });
 
+  const [appVersion, setAppVersion] = useState<string>(ENV.CLIENT_VERSION);
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
   useEffect(() => {
     async function loadNotifSettings() {
       const service = NotificationService.getInstance();
@@ -40,7 +47,39 @@ export const SettingsScreen: React.FC = () => {
       setNotifSettings(service.getSettings());
     }
     loadNotifSettings();
+
+    async function checkOta() {
+      const ver = await hotUpdateService.getCurrentVersion();
+      setAppVersion(ver);
+      const res = await hotUpdateService.checkForUpdate();
+      if (res.isAvailable) {
+        setUpdateInfo(res);
+        setShowUpdateModal(true);
+      }
+    }
+    checkOta();
   }, []);
+
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const res = await hotUpdateService.checkForUpdate();
+      if (res.isAvailable) {
+        setUpdateInfo(res);
+        setShowUpdateModal(true);
+      } else {
+        Alert.alert(
+          'Up to Date',
+          `You are already running the latest version (v${res.currentVersion}).`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch {
+      Alert.alert('Update Check Failed', 'Could not connect to the update server.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   const toggleRecurringReminders = async () => {
     const updated = !notifSettings.recurringRemindersEnabled;
@@ -258,7 +297,35 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.row}>
           <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Platform</Text>
           <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {ENV.PLATFORM} (v{ENV.CLIENT_VERSION})
+            {ENV.PLATFORM} (Base APK v{ENV.CLIENT_VERSION})
+          </Text>
+        </View>
+      </Card>
+
+      {/* In-App Updates (OTA) Card */}
+      <Card style={styles.card}>
+        <View style={styles.sectionHeaderRow}>
+          <View>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textMuted, marginBottom: 2 }]}>
+              In-App Updates (OTA)
+            </Text>
+            <Text style={[styles.label, { color: theme.colors.textSecondary, fontSize: 12 }]}>
+              Current Version: v{appVersion}
+            </Text>
+          </View>
+          <Button
+            label={isCheckingUpdate ? 'Checking...' : 'Check Update'}
+            variant="outline"
+            size="sm"
+            isLoading={isCheckingUpdate}
+            onPress={handleCheckUpdate}
+          />
+        </View>
+        <View style={[styles.divider, { backgroundColor: theme.colors.surfaceBorder }]} />
+        <View style={styles.row}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Update Channel</Text>
+          <Text style={[styles.value, { color: theme.colors.primary, fontWeight: '600' }]}>
+            Direct Over-The-Air (EC2)
           </Text>
         </View>
       </Card>
@@ -349,6 +416,13 @@ export const SettingsScreen: React.FC = () => {
         size="md"
         onPress={handleSignOut}
         style={styles.signOutButton}
+      />
+
+      {/* In-App OTA Update Modal */}
+      <HotUpdateModal
+        visible={showUpdateModal}
+        updateInfo={updateInfo}
+        onDismiss={() => setShowUpdateModal(false)}
       />
     </Screen>
   );

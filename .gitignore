@@ -52,6 +52,8 @@ coverage/
 # React Native & Mobile
 *.apk
 *.aab
+.ota_build/
+mobile/.ota_build/
 mobile/android/app/build/
 mobile/android/.gradle/
 mobile/android/local.properties

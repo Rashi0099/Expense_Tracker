@@ -7,7 +7,8 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ota:publish": "node scripts/publish-ota.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.21.0",
