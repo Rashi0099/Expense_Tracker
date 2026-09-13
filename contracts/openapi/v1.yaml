@@ -1,0 +1,1331 @@
+openapi: 3.0.3
+info:
+  title: Expense Tracker API
+  version: 1.0.0
+  description: Production-grade REST API and offline synchronization gateway.
+paths:
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Logout'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: auth_me_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Refresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Refresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Refresh'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          description: ''
+  /api/v1/budgets/:
+    get:
+      operationId: budgets_retrieve
+      summary: Get monthly budgets with real-time consumption
+      tags:
+      - budgets
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetOverview'
+          description: ''
+    post:
+      operationId: budgets_create
+      summary: Create a monthly or category budget
+      tags:
+      - budgets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BudgetCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BudgetCreate'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+          description: ''
+  /api/v1/budgets/{id}/:
+    get:
+      operationId: budgets_retrieve_2
+      summary: Retrieve budget details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - budgets
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+          description: ''
+    patch:
+      operationId: budgets_partial_update
+      summary: Update budget limit amount
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - budgets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBudget'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBudget'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBudget'
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+          description: ''
+    delete:
+      operationId: budgets_destroy
+      summary: Delete budget
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - budgets
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/categories/:
+    get:
+      operationId: categories_list
+      tags:
+      - categories
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+          description: ''
+    post:
+      operationId: categories_create
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+  /api/v1/categories/{id}/:
+    get:
+      operationId: categories_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - categories
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    patch:
+      operationId: categories_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCategory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCategory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCategory'
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    delete:
+      operationId: categories_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - categories
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/expenses/:
+    get:
+      operationId: expenses_list
+      tags:
+      - expenses
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expense'
+          description: ''
+    post:
+      operationId: expenses_create
+      tags:
+      - expenses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExpenseCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExpenseCreate'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+  /api/v1/expenses/{id}/:
+    get:
+      operationId: expenses_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - expenses
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    patch:
+      operationId: expenses_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - expenses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExpenseUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedExpenseUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedExpenseUpdate'
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    delete:
+      operationId: expenses_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - expenses
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/health/:
+    get:
+      operationId: health_retrieve
+      description: |-
+        Health check endpoint reporting overall system health (liveness and DB readiness).
+        Never exposes credentials, secrets, or internal stack traces.
+      summary: System readiness and database health probe
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckSuccess'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckFailure'
+          description: ''
+  /api/v1/income/:
+    get:
+      operationId: income_list
+      tags:
+      - income
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Income'
+          description: ''
+    post:
+      operationId: income_create
+      tags:
+      - income
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncomeCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IncomeCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IncomeCreate'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Income'
+          description: ''
+  /api/v1/income/{id}/:
+    get:
+      operationId: income_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - income
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Income'
+          description: ''
+    patch:
+      operationId: income_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - income
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedIncomeUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedIncomeUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedIncomeUpdate'
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Income'
+          description: ''
+    delete:
+      operationId: income_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - income
+      security:
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /health/:
+    get:
+      operationId: health_retrieve_2
+      description: |-
+        Health check endpoint reporting overall system health (liveness and DB readiness).
+        Never exposes credentials, secrets, or internal stack traces.
+      summary: System readiness and database health probe
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckSuccess'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckFailure'
+          description: ''
+  /health/live/:
+    get:
+      operationId: health_live_retrieve
+      description: Kubernetes / process liveness probe. Checks that the web process
+        responds to HTTP.
+      summary: Process liveness probe
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessSuccess'
+          description: ''
+components:
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        tokens:
+          $ref: '#/components/schemas/TokenResponse'
+      required:
+      - tokens
+      - user
+    Budget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          readOnly: true
+        periodStart:
+          type: string
+          format: date
+        limitAmount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+          maxLength: 3
+        version:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - categoryName
+      - created_at
+      - id
+      - limitAmount
+      - periodStart
+      - updated_at
+      - version
+    BudgetConsumption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        categoryIcon:
+          type: string
+          nullable: true
+        categoryColor:
+          type: string
+          nullable: true
+        limitAmount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        spent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        remaining:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        percentageUsed:
+          type: number
+          format: double
+        isOverBudget:
+          type: boolean
+      required:
+      - id
+      - isOverBudget
+      - limitAmount
+      - percentageUsed
+      - remaining
+      - spent
+    BudgetCreate:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        periodStart:
+          type: string
+          format: date
+        limitAmount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          default: USD
+          maxLength: 3
+      required:
+      - limitAmount
+      - periodStart
+    BudgetOverview:
+      type: object
+      properties:
+        period:
+          type: string
+        overallBudget:
+          allOf:
+          - $ref: '#/components/schemas/BudgetConsumption'
+          nullable: true
+        categoryBudgets:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetConsumption'
+      required:
+      - categoryBudgets
+      - overallBudget
+      - period
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 64
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        icon:
+          type: string
+          maxLength: 64
+        color:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+          maxLength: 7
+        isSystem:
+          type: boolean
+          readOnly: true
+        isArchived:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - isSystem
+      - name
+      - type
+      - version
+    CategoryCreate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 64
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        icon:
+          type: string
+          maxLength: 64
+        color:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+          maxLength: 7
+      required:
+      - id
+      - name
+      - type
+    DeviceMetadata:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        platform:
+          allOf:
+          - $ref: '#/components/schemas/PlatformEnum'
+          default: WEB
+        deviceName:
+          type: string
+          default: Web Client
+          maxLength: 100
+        clientVersion:
+          type: string
+          default: 1.0.0
+          maxLength: 20
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+          maxLength: 3
+        categoryId:
+          type: string
+          format: uuid
+        categoryName:
+          type: string
+          readOnly: true
+        categoryColor:
+          type: string
+          readOnly: true
+        categoryIcon:
+          type: string
+          readOnly: true
+        transactionDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+        payee:
+          type: string
+          nullable: true
+          maxLength: 100
+        note:
+          type: string
+          nullable: true
+        version:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - categoryColor
+      - categoryIcon
+      - categoryId
+      - categoryName
+      - createdAt
+      - id
+      - paymentMethod
+      - transactionDate
+      - updatedAt
+      - version
+    ExpenseCreate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          default: USD
+          maxLength: 3
+        categoryId:
+          type: string
+          format: uuid
+        transactionDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+          default: CASH
+          maxLength: 32
+        payee:
+          type: string
+          maxLength: 100
+        note:
+          type: string
+        clientCreatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - amount
+      - categoryId
+      - transactionDate
+    HealthCheckFailure:
+      type: object
+      properties:
+        status:
+          type: string
+        components:
+          type: object
+          additionalProperties: {}
+      required:
+      - components
+      - status
+    HealthCheckSuccess:
+      type: object
+      properties:
+        status:
+          type: string
+        components:
+          type: object
+          additionalProperties: {}
+      required:
+      - components
+      - status
+    Income:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+          maxLength: 3
+        categoryId:
+          type: string
+          format: uuid
+        categoryName:
+          type: string
+          readOnly: true
+        transactionDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+        source:
+          type: string
+          nullable: true
+          maxLength: 100
+        note:
+          type: string
+          nullable: true
+        version:
+          type: integer
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - categoryId
+      - categoryName
+      - createdAt
+      - id
+      - paymentMethod
+      - transactionDate
+      - updatedAt
+      - version
+    IncomeCreate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          default: USD
+          maxLength: 3
+        categoryId:
+          type: string
+          format: uuid
+        transactionDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+          default: BANK_TRANSFER
+          maxLength: 32
+        source:
+          type: string
+          maxLength: 100
+        note:
+          type: string
+        clientCreatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - amount
+      - categoryId
+      - transactionDate
+    LivenessSuccess:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+        device:
+          $ref: '#/components/schemas/DeviceMetadata'
+      required:
+      - email
+      - password
+    Logout:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+        deviceId:
+          type: string
+          format: uuid
+      required:
+      - deviceId
+      - refreshToken
+    PatchedBudget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryName:
+          type: string
+          readOnly: true
+        periodStart:
+          type: string
+          format: date
+        limitAmount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+          maxLength: 3
+        version:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedCategory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 64
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        icon:
+          type: string
+          maxLength: 64
+        color:
+          type: string
+          pattern: ^#[0-9A-Fa-f]{6}$
+          maxLength: 7
+        isSystem:
+          type: boolean
+          readOnly: true
+        isArchived:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
+    PatchedExpenseUpdate:
+      type: object
+      properties:
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        categoryId:
+          type: string
+          format: uuid
+        transactionDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+          maxLength: 32
+        payee:
+          type: string
+          maxLength: 100
+        note:
+          type: string
+        baseVersion:
+          type: integer
+    PatchedIncomeUpdate:
+      type: object
+      properties:
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        categoryId:
+          type: string
+          format: uuid
+        transactionDate:
+          type: string
+          format: date
+        paymentMethod:
+          type: string
+          maxLength: 32
+        source:
+          type: string
+          maxLength: 100
+        note:
+          type: string
+        baseVersion:
+          type: integer
+    PatchedUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        baseCurrency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+    PlatformEnum:
+      enum:
+      - IOS
+      - ANDROID
+      - WEB
+      type: string
+      description: |-
+        * `IOS` - IOS
+        * `ANDROID` - ANDROID
+        * `WEB` - WEB
+    Refresh:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+        deviceId:
+          type: string
+          format: uuid
+      required:
+      - deviceId
+      - refreshToken
+    Register:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+          minLength: 10
+        baseCurrency:
+          type: string
+          default: USD
+          maxLength: 3
+        device:
+          $ref: '#/components/schemas/DeviceMetadata'
+      required:
+      - email
+      - password
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+      required:
+      - accessToken
+      - expiresIn
+      - refreshToken
+    TypeEnum:
+      enum:
+      - EXPENSE
+      - INCOME
+      type: string
+      description: |-
+        * `EXPENSE` - Expense
+        * `INCOME` - Income
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        baseCurrency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - baseCurrency
+      - createdAt
+      - email
+      - id
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Enter JWT access token with Bearer prefix: Bearer <token>'
