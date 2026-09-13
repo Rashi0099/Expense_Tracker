@@ -11,6 +11,7 @@ import {
 } from '@/types/recurring';
 import { getTodayDateString } from '@/utils/date';
 import { parseApiError } from '@/utils/error';
+import { getCategoryEmoji } from '@/components/common/CategoryIcon';
 
 export interface RecurringFormModalProps {
   isOpen: boolean;
@@ -160,7 +161,7 @@ export const RecurringFormModal: React.FC<RecurringFormModalProps> = ({
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             options={expenseCategories.map((c) => ({
-              label: `${c.icon || '🏷️'} ${c.name}`,
+              label: `${getCategoryEmoji(c.icon)} ${c.name}`,
               value: c.id,
             }))}
             error={fieldErrors.categoryId}

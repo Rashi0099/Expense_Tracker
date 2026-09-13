@@ -9,6 +9,7 @@ import { getTodayDateString } from '@/utils/date';
 import { getSuggestedCategory, recordUserCategoryChoice } from '@/utils/categorySuggester';
 import { parseApiError } from '@/utils/error';
 import { Sparkles } from 'lucide-react';
+import { CategoryIcon, getCategoryEmoji } from '@/components/common/CategoryIcon';
 
 export interface ExpenseFormModalProps {
   isOpen: boolean;
@@ -201,7 +202,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 onClick={() => applySuggestion(suggestedCat)}
                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-semibold transition-colors"
               >
-                <span>{suggestedCat.icon}</span>
+                <CategoryIcon icon={suggestedCat.icon} className="w-3.5 h-3.5" />
                 <span>{suggestedCat.name}</span>
                 <span className="text-[10px] text-amber-700 underline ml-0.5">Apply</span>
               </button>
@@ -215,7 +216,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             options={expenseCategories.map((c) => ({
-              label: `${c.icon || '🏷️'} ${c.name}`,
+              label: `${getCategoryEmoji(c.icon)} ${c.name}`,
               value: c.id,
             }))}
             error={fieldErrors.categoryId}

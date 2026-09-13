@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Edit2, Trash2, Lock } from 'lucide-react';
+import { CategoryIcon } from '@/components/common/CategoryIcon';
 
 export interface CategoryGridProps {
   categories: Category[];
@@ -18,10 +19,10 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({ categories, onEdit, 
         <Card key={cat.id} hoverable className="p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shadow-sm shrink-0"
-              style={{ backgroundColor: cat.color ? `${cat.color}33` : '#EEF2F6' }}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm shrink-0 overflow-hidden"
+              style={{ backgroundColor: cat.color ? `${cat.color}25` : '#EEF2F6' }}
             >
-              <span>{cat.icon || '🏷️'}</span>
+              <CategoryIcon icon={cat.icon} color={cat.color || '#475569'} className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">

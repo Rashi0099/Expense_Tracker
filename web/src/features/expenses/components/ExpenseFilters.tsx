@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Category } from '@/types/category';
 import { ExpenseFilters as IExpenseFilters, PaymentMethod } from '@/types/expense';
 import { Search, X } from 'lucide-react';
+import { getCategoryEmoji } from '@/components/common/CategoryIcon';
 
 export interface ExpenseFiltersProps {
   filters: IExpenseFilters;
@@ -64,7 +65,7 @@ export const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
           options={[
             { label: 'All Categories', value: '' },
             ...expenseCategories.map((c) => ({
-              label: `${c.icon || '🏷️'} ${c.name}`,
+              label: `${getCategoryEmoji(c.icon)} ${c.name}`,
               value: c.id,
             })),
           ]}

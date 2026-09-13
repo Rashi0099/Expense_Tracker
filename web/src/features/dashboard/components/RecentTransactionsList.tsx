@@ -6,6 +6,7 @@ import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Receipt } from 'lucide-react';
+import { CategoryIcon } from '@/components/common/CategoryIcon';
 
 export interface RecentTransactionsListProps {
   expenses: Expense[];
@@ -41,10 +42,10 @@ export const RecentTransactionsList: React.FC<RecentTransactionsListProps> = ({
             <div key={expense.id} className="py-3 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-3">
                 <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm shadow-2xs shrink-0"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm shadow-2xs shrink-0 overflow-hidden"
                   style={{ backgroundColor: expense.categoryColor ? `${expense.categoryColor}25` : '#EEF2F6' }}
                 >
-                  <span>{expense.categoryIcon || '🏷️'}</span>
+                  <CategoryIcon icon={expense.categoryIcon} color={expense.categoryColor || '#475569'} className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="font-semibold text-slate-900">{expense.payee || 'Expense'}</h4>

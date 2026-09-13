@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Category } from '@/types/category';
 import { BudgetCreateInput } from '@/types/budget';
 import { parseApiError } from '@/utils/error';
+import { getCategoryEmoji } from '@/components/common/CategoryIcon';
 
 export interface BudgetFormModalProps {
   isOpen: boolean;
@@ -103,7 +104,7 @@ export const BudgetFormModal: React.FC<BudgetFormModalProps> = ({
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             options={expenseCategories.map((c) => ({
-              label: `${c.icon || '🏷️'} ${c.name}`,
+              label: `${getCategoryEmoji(c.icon)} ${c.name}`,
               value: c.id,
             }))}
             required

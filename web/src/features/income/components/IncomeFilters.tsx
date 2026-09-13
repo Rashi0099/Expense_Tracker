@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Category } from '@/types/category';
 import { IncomeFilters as IIncomeFilters } from '@/types/income';
 import { Search, X } from 'lucide-react';
+import { getCategoryEmoji } from '@/components/common/CategoryIcon';
 
 export interface IncomeFiltersProps {
   filters: IIncomeFilters;
@@ -65,7 +66,7 @@ export const IncomeFilters: React.FC<IncomeFiltersProps> = ({
           options={[
             { label: 'All Categories', value: '' },
             ...incomeCategories.map((c) => ({
-              label: `${c.icon || '💰'} ${c.name}`,
+              label: `${getCategoryEmoji(c.icon)} ${c.name}`,
               value: c.id,
             })),
           ]}

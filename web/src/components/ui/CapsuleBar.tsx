@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { CategoryIcon } from '@/components/common/CategoryIcon';
 
 export interface CapsuleBarProps {
   label: string;
@@ -42,7 +43,7 @@ export const CapsuleBar: React.FC<CapsuleBarProps> = ({
         >
           {/* Icon or emoji */}
           <div className="mb-1 text-xl flex items-center justify-center text-slate-800 drop-shadow-sm">
-            {icon || '🏷️'}
+            {typeof icon === 'string' ? <CategoryIcon icon={icon} className="w-5 h-5" /> : (icon || '🏷️')}
           </div>
 
           {/* Amount */}

@@ -8,6 +8,7 @@ import { Category } from '@/types/category';
 import { PaymentMethod } from '@/types/expense';
 import { getTodayDateString } from '@/utils/date';
 import { parseApiError } from '@/utils/error';
+import { getCategoryEmoji } from '@/components/common/CategoryIcon';
 
 export interface IncomeFormModalProps {
   isOpen: boolean;
@@ -168,7 +169,7 @@ export const IncomeFormModal: React.FC<IncomeFormModalProps> = ({
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             options={incomeCategories.map((c) => ({
-              label: `${c.icon || '💰'} ${c.name}`,
+              label: `${getCategoryEmoji(c.icon)} ${c.name}`,
               value: c.id,
             }))}
             error={fieldErrors.categoryId}
