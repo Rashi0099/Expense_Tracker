@@ -125,11 +125,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Phone authentication handler (Login & Register in one)
+  // Phone authentication handler (Login & Register in one via Firebase ID token)
   const loginWithPhone = async (payload: PhoneAuthPayload) => {
     setError(null);
     try {
       const authData = await authApi.loginWithPhone(payload);
+      setAccessToken(authData.tokens.accessToken);
+      setRefreshToken(authData.tokens.refreshToken);
+      setUser(authData.user);
+      setStatus('AUTHENTICATED');
+    } catch (err) {
+      const apiErr = parseApiError(err);
+      setError(apiErr.message);
+      throw apiErr;
+    }
+  };
+
+  // Phone OTP authentication handler (Fast2SMS / Backend OTP)
+  const loginWithPhoneOtp = async (phoneNumber: string, otp: string, baseCurrency = 'INR') => {
+    setError(null);
+    try {
+      const authData = await authApi.verifyPhoneOtp(phoneNumber, otp, baseCurrency);
       setAccessToken(authData.tokens.accessToken);
       setRefreshToken(authData.tokens.refreshToken);
       setUser(authData.user);
@@ -159,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         loginWithPhone,
+        loginWithPhoneOtp,
         updateUser,
         logout,
         isAuthenticated: status === 'AUTHENTICATED',
@@ -168,5 +185,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
+
 };
 

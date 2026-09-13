@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, baseCurrency?: string) => Promise<void>;
   loginWithPhone: (idToken: string, baseCurrency?: string) => Promise<void>;
+  loginWithPhoneOtp: (phoneNumber: string, otp: string, baseCurrency?: string) => Promise<void>;
   logout: () => Promise<void>;
   pendingDeepLink: string | null;
   setPendingDeepLink: (url: string | null) => void;
@@ -28,11 +29,13 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   register: async () => {},
   loginWithPhone: async () => {},
+  loginWithPhoneOtp: async () => {},
   logout: async () => {},
   pendingDeepLink: null,
   setPendingDeepLink: () => {},
   consumePendingDeepLink: () => null,
 });
+
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<MobileUser | null>(null);
@@ -141,6 +144,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
   };
 
+  const loginWithPhoneOtp = async (phoneNumber: string, otp: string, baseCurrency = 'INR') => {
+    let deviceId = await SecureStorage.getDeviceId();
+    if (!deviceId) {
+      deviceId = generateUUID();
+      await SecureStorage.setDeviceId(deviceId);
+    }
+
+    const res = await mobileAuthApi.verifyPhoneOtp(phoneNumber, otp, deviceId, baseCurrency);
+    tokenStore.setAccessToken(res.tokens.accessToken);
+    await SecureStorage.setRefreshToken(res.tokens.refreshToken);
+    await SecureStorage.setUserData(res.user);
+
+    setUser(res.user);
+    DatabaseManager.getInstance().setCurrentUser(res.user.id);
+    SyncEngine.getInstance().init();
+    SyncEngine.getInstance().sync().catch(() => {});
+    FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
+  };
+
   const logout = async () => {
     try {
       const refreshToken = await SecureStorage.getRefreshToken();
@@ -167,6 +189,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         register,
         loginWithPhone,
+        loginWithPhoneOtp,
         logout,
         pendingDeepLink,
         setPendingDeepLink,
@@ -176,6 +199,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       {children}
     </AuthContext.Provider>
   );
+
 };
 
 export const useAuth = (): AuthContextType => useContext(AuthContext);

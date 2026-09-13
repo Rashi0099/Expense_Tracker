@@ -173,3 +173,7 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": r"/api/v[0-9]",
 }
+
+# Indian SMS Gateway Configuration (Fast2SMS)
+FAST2SMS_API_KEY = os.environ.get("FAST2SMS_API_KEY", "")
+

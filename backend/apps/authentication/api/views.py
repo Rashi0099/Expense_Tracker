@@ -11,8 +11,11 @@ from apps.authentication.api.serializers import (
     PhoneAuthSerializer,
     RefreshSerializer,
     RegisterSerializer,
+    SendPhoneOTPResponseSerializer,
+    SendPhoneOTPSerializer,
     TokenResponseSerializer,
     UserSerializer,
+    VerifyPhoneOTPSerializer,
 )
 from apps.authentication.services.auth_service import (
     authenticate_or_register_phone_user,
@@ -20,7 +23,10 @@ from apps.authentication.services.auth_service import (
     logout_device,
     refresh_tokens,
     register_user,
+    send_phone_otp,
+    verify_phone_otp,
 )
+
 
 
 class RegisterView(APIView):
@@ -105,6 +111,56 @@ class PhoneAuthView(APIView):
             },
         }
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class SendPhoneOTPView(APIView):
+    """
+    Generates and dispatches a 6-digit OTP code to an Indian mobile number via Fast2SMS.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(request=SendPhoneOTPSerializer, responses={200: SendPhoneOTPResponseSerializer})
+    def post(self, request):
+        serializer = SendPhoneOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = send_phone_otp(phone_number=serializer.validated_data["phoneNumber"])
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class VerifyPhoneOTPView(APIView):
+    """
+    Verifies a 6-digit OTP code against backend records, creates or retrieves user,
+    and returns JWT access and refresh token pair.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(request=VerifyPhoneOTPSerializer, responses={200: AuthResponseSerializer})
+    def post(self, request):
+        serializer = VerifyPhoneOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user, access_token, refresh_token, expires_in = verify_phone_otp(
+            phone_number=serializer.validated_data["phoneNumber"],
+            otp=serializer.validated_data["otp"],
+            base_currency=serializer.validated_data.get("baseCurrency", "INR"),
+            device_data=serializer.validated_data.get("device", {}),
+        )
+
+        response_data = {
+            "user": UserSerializer(user).data,
+            "tokens": {
+                "accessToken": access_token,
+                "refreshToken": refresh_token,
+                "expiresIn": expires_in,
+            },
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 
 

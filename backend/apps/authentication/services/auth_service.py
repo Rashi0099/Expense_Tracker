@@ -12,9 +12,15 @@ from apps.authentication.jwt_auth import (
     get_refresh_token_lifetime_seconds,
     hash_token,
 )
-from apps.authentication.models import Device, RefreshSession
+from apps.authentication.models import Device, PhoneOTP, RefreshSession
+from apps.authentication.services.sms_service import (
+    generate_otp_code,
+    normalize_indian_phone,
+    send_otp_sms,
+)
 
 User = get_user_model()
+
 
 
 def register_user(email: str, password: str, base_currency: str, device_data: dict):
@@ -295,4 +301,170 @@ def authenticate_or_register_phone_user(
         access_token, expires_in = generate_access_token(user, str(device.id))
 
     return user, access_token, raw_refresh, expires_in
+
+
+def send_phone_otp(phone_number: str) -> dict:
+    """
+    Validates phone number, checks rate-limiting/cooldown, generates secure 6-digit OTP,
+    stores it in PhoneOTP, and dispatches via Fast2SMS.
+    """
+    full_phone, _ = normalize_indian_phone(phone_number)
+
+    now = timezone.now()
+    # Check cooldown (30 seconds)
+    recent_otp = (
+        PhoneOTP.objects.filter(phone_number=full_phone)
+        .order_by("-created_at")
+        .first()
+    )
+    if recent_otp and (now - recent_otp.created_at).total_seconds() < 30:
+        remaining = int(30 - (now - recent_otp.created_at).total_seconds())
+        raise ValidationError(
+            {"phoneNumber": [f"Please wait {remaining} seconds before requesting a new OTP."]}
+        )
+
+    # Hourly rate limiting (max 5 requests per hour)
+    one_hour_ago = now - timedelta(hours=1)
+    recent_count = PhoneOTP.objects.filter(
+        phone_number=full_phone,
+        created_at__gte=one_hour_ago,
+    ).count()
+    if recent_count >= 5:
+        raise ValidationError(
+            {"phoneNumber": ["Too many OTP requests. Please try again after 1 hour."]}
+        )
+
+    # For mock test numbers, fixed OTP is 123456
+    if full_phone == "+919999999999":
+        otp_code = "123456"
+    else:
+        otp_code = generate_otp_code()
+
+    # Expires in 5 minutes
+    expires_at = now + timedelta(minutes=5)
+    PhoneOTP.objects.create(
+        phone_number=full_phone,
+        otp_code=otp_code,
+        expires_at=expires_at,
+    )
+
+    # Send SMS via Fast2SMS gateway
+    sms_res = send_otp_sms(full_phone, otp_code)
+
+    return {
+        "success": True,
+        "message": "OTP sent successfully to your mobile number.",
+        "phoneNumber": full_phone,
+        "cooldown": 30,
+        "expiresIn": 300,
+        "simulated": sms_res.get("simulated", False),
+    }
+
+
+def verify_phone_otp(
+    phone_number: str,
+    otp: str,
+    base_currency: str = "INR",
+    device_data: dict = None,
+):
+    """
+    Verifies 6-digit OTP code against PhoneOTP database records,
+    registers new user or logs in existing user by phone_number,
+    and returns authenticated user and JWT token pair.
+    """
+    device_data = device_data or {}
+    full_phone, _ = normalize_indian_phone(phone_number)
+    clean_otp = str(otp).strip()
+
+    now = timezone.now()
+
+    # Mock test number bypass
+    if full_phone == "+919999999999" and clean_otp == "123456":
+        pass
+    else:
+        otp_record = (
+            PhoneOTP.objects.filter(
+                phone_number=full_phone,
+                is_verified=False,
+                expires_at__gte=now,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not otp_record:
+            raise AuthenticationFailed(
+                "Invalid or expired OTP. Please request a new code.",
+                code="INVALID_OTP",
+            )
+
+        if otp_record.attempts >= 5:
+            raise AuthenticationFailed(
+                "Too many incorrect attempts. Please request a new OTP code.",
+                code="OTP_ATTEMPTS_EXCEEDED",
+            )
+
+        # Allow dev fallback: if FAST2SMS_API_KEY is not set, allow 123456 or the generated OTP
+        from django.conf import settings
+        import os
+        api_key = getattr(settings, "FAST2SMS_API_KEY", None) or os.environ.get("FAST2SMS_API_KEY", "")
+        is_dev_mode = not api_key or api_key in ("dummy", "mock", "your_fast2sms_api_key_here")
+
+        if otp_record.otp_code != clean_otp and not (is_dev_mode and clean_otp == "123456"):
+            otp_record.attempts += 1
+            otp_record.save(update_fields=["attempts"])
+            raise AuthenticationFailed(
+                "Incorrect verification code. Please try again.",
+                code="INCORRECT_OTP",
+            )
+
+        otp_record.is_verified = True
+        otp_record.save(update_fields=["is_verified"])
+
+    with transaction.atomic():
+        user = User.objects.filter(phone_number=full_phone).first()
+
+        if not user:
+            user = User.objects.create_user(
+                phone_number=full_phone,
+                base_currency=base_currency or "INR",
+            )
+        elif not user.is_active:
+            raise AuthenticationFailed(
+                "This account has been deactivated.", code="ACCOUNT_DEACTIVATED"
+            )
+
+        device_id = device_data.get("id") or uuid.uuid4()
+        device, created = Device.objects.get_or_create(
+            id=device_id,
+            defaults={
+                "user": user,
+                "platform": device_data.get("platform", "WEB"),
+                "device_name": device_data.get("deviceName", "Default Device"),
+                "client_version": device_data.get("clientVersion", "1.0.0"),
+            },
+        )
+        if not created:
+            device.user = user
+            device.is_active = True
+            device.device_name = device_data.get("deviceName", device.device_name)
+            device.client_version = device_data.get("clientVersion", device.client_version)
+            device.save(update_fields=["user", "is_active", "device_name", "client_version"])
+
+        # Generate tokens
+        raw_refresh = generate_raw_refresh_token()
+        token_hash = hash_token(raw_refresh)
+        expires_at = timezone.now() + timedelta(seconds=get_refresh_token_lifetime_seconds())
+
+        RefreshSession.objects.create(
+            device=device,
+            token_hash=token_hash,
+            family_id=uuid.uuid4(),
+            expires_at=expires_at,
+        )
+
+        access_token, expires_in = generate_access_token(user, str(device.id))
+
+    return user, access_token, raw_refresh, expires_in
+
 

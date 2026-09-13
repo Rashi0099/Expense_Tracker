@@ -36,7 +36,8 @@ class Device(models.Model):
         verbose_name_plural = "Devices"
 
     def __str__(self):
-        return f"{self.device_name} ({self.platform}) - {self.user.email}"
+        ident = self.user.phone_number or self.user.email or str(self.user.id)
+        return f"{self.device_name} ({self.platform}) - {ident}"
 
 
 class RefreshSession(models.Model):
@@ -63,3 +64,28 @@ class RefreshSession(models.Model):
 
     def __str__(self):
         return f"Session {self.id} (Device {self.device_id}) - Revoked: {self.is_revoked}"
+
+
+class PhoneOTP(models.Model):
+    """Tracks one-time passwords for mobile phone verification."""
+
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+    phone_number = models.CharField(max_length=20, db_index=True)
+    otp_code = models.CharField(max_length=6)
+    attempts = models.PositiveIntegerField(default=0)
+    is_verified = models.BooleanField(default=False)
+    expires_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "phone_otps"
+        verbose_name = "Phone OTP"
+        verbose_name_plural = "Phone OTPs"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["phone_number", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"OTP for {self.phone_number} (Expires: {self.expires_at}, Verified: {self.is_verified})"
+

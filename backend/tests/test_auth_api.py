@@ -202,3 +202,98 @@ class TestAuthenticationAPI:
         )
         assert response.status_code == 400
 
+    def test_phone_send_otp_success(self):
+        from apps.authentication.models import PhoneOTP
+
+        payload = {"phoneNumber": "+919778106863"}
+        response = self.client.post(reverse("authentication:phone-send-otp"), payload, format="json")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["phoneNumber"] == "+919778106863"
+        assert data["cooldown"] == 30
+
+        otp_record = PhoneOTP.objects.filter(phone_number="+919778106863").first()
+        assert otp_record is not None
+        assert len(otp_record.otp_code) == 6
+
+    def test_phone_send_otp_cooldown(self):
+        payload = {"phoneNumber": "+919778106864"}
+        resp1 = self.client.post(reverse("authentication:phone-send-otp"), payload, format="json")
+        assert resp1.status_code == 200
+
+        # Sending again immediately should trigger 30s cooldown
+        resp2 = self.client.post(reverse("authentication:phone-send-otp"), payload, format="json")
+        assert resp2.status_code == 400
+        assert "Please wait" in str(resp2.json())
+
+    def test_phone_verify_otp_new_and_existing_user(self):
+        from apps.authentication.models import PhoneOTP
+
+        # 1. Send OTP
+        phone = "+919876543211"
+        self.client.post(reverse("authentication:phone-send-otp"), {"phoneNumber": phone}, format="json")
+        otp_record = PhoneOTP.objects.filter(phone_number=phone).first()
+
+        # 2. Verify with correct OTP -> Registers new user
+        verify_payload = {
+            "phoneNumber": phone,
+            "otp": otp_record.otp_code,
+            "baseCurrency": "INR",
+            "device": {
+                "platform": "WEB",
+                "deviceName": "Chrome Browser",
+                "clientVersion": "1.0.0",
+            },
+        }
+        res1 = self.client.post(reverse("authentication:phone-verify-otp"), verify_payload, format="json")
+        assert res1.status_code == 200
+        data1 = res1.json()
+        assert data1["user"]["phoneNumber"] == phone
+        assert data1["user"]["baseCurrency"] == "INR"
+        assert "accessToken" in data1["tokens"]
+        assert "refreshToken" in data1["tokens"]
+
+        assert User.objects.filter(phone_number=phone).exists()
+
+        # 3. Request new OTP and verify again -> Logs in existing user
+        # Fast-forward created_at to bypass cooldown for test
+        from django.utils import timezone
+        from datetime import timedelta
+        PhoneOTP.objects.filter(phone_number=phone).update(created_at=timezone.now() - timedelta(seconds=35))
+
+        self.client.post(reverse("authentication:phone-send-otp"), {"phoneNumber": phone}, format="json")
+        new_otp = PhoneOTP.objects.filter(phone_number=phone, is_verified=False).order_by("-created_at").first()
+
+        verify_payload["otp"] = new_otp.otp_code
+        res2 = self.client.post(reverse("authentication:phone-verify-otp"), verify_payload, format="json")
+        assert res2.status_code == 200
+        assert User.objects.filter(phone_number=phone).count() == 1
+
+    def test_phone_verify_otp_wrong_code(self):
+        from apps.authentication.models import PhoneOTP
+
+        phone = "+919876543212"
+        self.client.post(reverse("authentication:phone-send-otp"), {"phoneNumber": phone}, format="json")
+
+        verify_payload = {
+            "phoneNumber": phone,
+            "otp": "000000",
+        }
+        res = self.client.post(reverse("authentication:phone-verify-otp"), verify_payload, format="json")
+        assert res.status_code == 401
+
+    def test_phone_verify_otp_test_number(self):
+        # Test number +919999999999 with 123456 always succeeds without prior send
+        verify_payload = {
+            "phoneNumber": "+919999999999",
+            "otp": "123456",
+            "baseCurrency": "INR",
+        }
+        res = self.client.post(reverse("authentication:phone-verify-otp"), verify_payload, format="json")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["user"]["phoneNumber"] == "+919999999999"
+        assert "accessToken" in data["tokens"]
+
+

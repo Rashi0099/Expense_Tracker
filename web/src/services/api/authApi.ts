@@ -4,6 +4,7 @@ import {
   LoginCredentials,
   PhoneAuthPayload,
   RegisterCredentials,
+  SendPhoneOtpResponse,
   TokenResponse,
   User,
 } from '@/types/auth';
@@ -40,6 +41,35 @@ export const authApi = {
   },
 
   /**
+   * Dispatches a 6-digit OTP code to mobile number via Fast2SMS Indian SMS Gateway.
+   * POST /api/v1/auth/phone/send-otp/
+   */
+  async sendPhoneOtp(phoneNumber: string): Promise<SendPhoneOtpResponse> {
+    const response = await apiClient.post<SendPhoneOtpResponse>('/auth/phone/send-otp/', {
+      phoneNumber,
+    });
+    return response.data;
+  },
+
+  /**
+   * Verifies 6-digit OTP code and registers/logs in the phone user.
+   * POST /api/v1/auth/phone/verify-otp/
+   */
+  async verifyPhoneOtp(
+    phoneNumber: string,
+    otp: string,
+    baseCurrency = 'INR'
+  ): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>('/auth/phone/verify-otp/', {
+      phoneNumber,
+      otp,
+      baseCurrency,
+      device: getClientDeviceMetadata(),
+    });
+    return response.data;
+  },
+
+  /**
    * Authenticate or register with Firebase Phone ID Token.
    * POST /api/v1/auth/phone/
    */
@@ -52,6 +82,7 @@ export const authApi = {
     const response = await apiClient.post<AuthResponse>('/auth/phone/', requestPayload);
     return response.data;
   },
+
 
 
   /**

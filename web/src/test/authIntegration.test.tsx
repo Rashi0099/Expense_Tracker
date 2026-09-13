@@ -17,7 +17,9 @@ let mockAuthValue: AuthContextType = {
   login: mockLogin,
   register: mockRegister,
   loginWithPhone: vi.fn(),
+  loginWithPhoneOtp: vi.fn(),
   updateUser: vi.fn(),
+
   logout: vi.fn(),
   isAuthenticated: false,
   isInitializing: false,

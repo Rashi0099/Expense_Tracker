@@ -49,6 +49,15 @@ export interface PhoneAuthPayload {
   device?: DeviceMetadata;
 }
 
+export interface SendPhoneOtpResponse {
+  success: boolean;
+  message: string;
+  phoneNumber: string;
+  cooldown: number;
+  expiresIn: number;
+  simulated?: boolean;
+}
+
 export type AuthStatus = 'INITIALIZING' | 'AUTHENTICATED' | 'UNAUTHENTICATED' | 'REFRESHING';
 
 export interface AuthState {
@@ -64,10 +73,12 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   loginWithPhone: (payload: PhoneAuthPayload) => Promise<void>;
+  loginWithPhoneOtp: (phoneNumber: string, otp: string, baseCurrency?: string) => Promise<void>;
   updateUser: (payload: { baseCurrency?: string }) => Promise<User>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isInitializing: boolean;
 }
+
 
 

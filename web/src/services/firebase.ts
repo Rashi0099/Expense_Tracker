@@ -7,12 +7,12 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDummyKeyForDevelopment',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAxZDVJFacbOvJVkgZ_KUMu1U5u66FC5oQ',
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'expense-tracker-d0a86.firebaseapp.com',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'expense-tracker-d0a86',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'expense-tracker-d0a86.appspot.com',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1013456337598',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:1013456337598:web:dummyAppId',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'expense-tracker-d0a86.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '22317762023',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:22317762023:web:baa37678ba058bea0ba942',
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -59,13 +59,8 @@ export const sendPhoneOtp = async (
 ): Promise<PhoneOtpSession> => {
   const normalizedPhone = phoneNumber.trim().replace(/\s+/g, '');
 
-  // Dev/Test Mock Support: Allows testing +91 9999999999 or offline dev without sending paid SMS
-  const isDevMock =
-    !import.meta.env.VITE_FIREBASE_API_KEY ||
-    import.meta.env.VITE_FIREBASE_API_KEY === 'AIzaSyDummyKeyForDevelopment' ||
-    normalizedPhone === '+919999999999';
-
-  if (isDevMock) {
+  // Allows instant zero-cost testing with +91 9999999999 / 123456
+  if (normalizedPhone === '+919999999999') {
     return {
       isMock: true,
       phoneNumber: normalizedPhone,

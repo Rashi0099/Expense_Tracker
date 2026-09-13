@@ -7,11 +7,12 @@ import { TextInput } from '../../components/forms/TextInput';
 import { Button } from '../../components/common/Button';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
+import { mobileAuthApi } from '../../api/services/mobileAuthApi';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<Props> = () => {
-  const { loginWithPhone } = useAuth();
+  const { loginWithPhoneOtp } = useAuth();
   const { theme } = useTheme();
 
   // Phone & OTP states
@@ -47,10 +48,11 @@ export const LoginScreen: React.FC<Props> = () => {
     try {
       const fullPhone = cleanPhone.startsWith('+') ? cleanPhone : `+91${cleanPhone}`;
       setPhoneNumber(fullPhone);
+      const res = await mobileAuthApi.sendPhoneOtp(fullPhone);
       setOtpStep('OTP_INPUT');
-      setCountdown(30);
+      setCountdown(res.cooldown || 30);
     } catch (err: any) {
-      setError(err?.message || 'Failed to send OTP. Please try again.');
+      setError(err?.response?.data?.phoneNumber?.[0] || err?.message || 'Failed to send OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -67,14 +69,14 @@ export const LoginScreen: React.FC<Props> = () => {
     setError(null);
     try {
       const cleanPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      const mockToken = `mock-phone-token-${cleanPhone}`;
-      await loginWithPhone(mockToken, 'INR');
+      await loginWithPhoneOtp(cleanPhone, code, 'INR');
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message || 'Invalid or expired OTP.');
+      setError(err?.response?.data?.error?.message || err?.message || 'Invalid or expired OTP.');
     } finally {
       setIsLoading(false);
     }
   };
+
 
   const handleOtpTextChange = (text: string) => {
     const val = text.replace(/\D/g, '').slice(0, 6);

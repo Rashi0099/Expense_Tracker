@@ -4,22 +4,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Wallet, AlertCircle, Phone, ArrowLeft, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { AppApiError } from '@/utils/error';
-import { sendPhoneOtp, verifyPhoneOtp, PhoneOtpSession } from '@/services/firebase';
+import { authApi } from '@/services/api/authApi';
 
 export const LoginPage: React.FC = () => {
   // Phone & OTP state
   const [countryCode, setCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [activePhone, setActivePhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpStep, setOtpStep] = useState<'PHONE_INPUT' | 'OTP_INPUT'>('PHONE_INPUT');
-  const [otpSession, setOtpSession] = useState<PhoneOtpSession | null>(null);
   const [countdown, setCountdown] = useState(0);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
-  const { loginWithPhone } = useAuth();
+  const { loginWithPhoneOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,10 +51,10 @@ export const LoginPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const session = await sendPhoneOtp(fullPhone, 'recaptcha-container');
-      setOtpSession(session);
+      const res = await authApi.sendPhoneOtp(fullPhone);
+      setActivePhone(fullPhone);
       setOtpStep('OTP_INPUT');
-      setCountdown(30);
+      setCountdown(res.cooldown || 30);
     } catch (err: any) {
       setErrorBanner(err.message || 'Failed to send OTP. Please check the number and try again.');
     } finally {
@@ -74,7 +73,7 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    if (!otpSession) {
+    if (!activePhone) {
       setErrorBanner('Verification session expired. Please request a new code.');
       setOtpStep('PHONE_INPUT');
       return;
@@ -82,15 +81,10 @@ export const LoginPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const idToken = await verifyPhoneOtp(otpSession, cleanOtp);
-      await loginWithPhone({ idToken });
+      await loginWithPhoneOtp(activePhone, cleanOtp);
       navigate(fromPath, { replace: true });
     } catch (err: any) {
-      if (err instanceof AppApiError) {
-        setErrorBanner(err.message);
-      } else {
-        setErrorBanner(err.message || 'Invalid or expired OTP code.');
-      }
+      setErrorBanner(err.message || 'Invalid or expired OTP code.');
     } finally {
       setIsLoading(false);
     }
@@ -110,9 +104,6 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
-      {/* Invisible reCAPTCHA container for Firebase */}
-      <div id="recaptcha-container"></div>
-
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
@@ -196,7 +187,7 @@ export const LoginPage: React.FC = () => {
               <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-xs text-slate-500">Code sent to </span>
                 <span className="text-xs font-semibold text-slate-800">
-                  {otpSession?.phoneNumber || `${countryCode} ${phoneNumber}`}
+                  {activePhone || `${countryCode} ${phoneNumber}`}
                 </span>
                 <button
                   type="button"

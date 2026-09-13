@@ -61,3 +61,24 @@ class AuthResponseSerializer(serializers.Serializer):
     user = UserSerializer()
     tokens = TokenResponseSerializer()
 
+
+class SendPhoneOTPSerializer(serializers.Serializer):
+    phoneNumber = serializers.CharField(required=True, max_length=20)
+
+
+class SendPhoneOTPResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    phoneNumber = serializers.CharField()
+    cooldown = serializers.IntegerField()
+    expiresIn = serializers.IntegerField()
+    simulated = serializers.BooleanField(required=False)
+
+
+class VerifyPhoneOTPSerializer(serializers.Serializer):
+    phoneNumber = serializers.CharField(required=True, max_length=20)
+    otp = serializers.CharField(required=True, min_length=6, max_length=6)
+    baseCurrency = serializers.CharField(max_length=3, required=False, default="INR")
+    device = DeviceMetadataSerializer(required=False, default=dict)
+
+

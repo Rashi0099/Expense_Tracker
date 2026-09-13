@@ -50,6 +50,33 @@ export const mobileAuthApi = {
     return res.data;
   },
 
+  async sendPhoneOtp(phoneNumber: string): Promise<{ success: boolean; message: string; cooldown: number }> {
+    const res = await mobileApiClient.post('/auth/phone/send-otp/', {
+      phoneNumber,
+    });
+    return res.data;
+  },
+
+  async verifyPhoneOtp(
+    phoneNumber: string,
+    otp: string,
+    deviceId: string,
+    baseCurrency = 'INR'
+  ): Promise<AuthResponse> {
+    const res = await mobileApiClient.post<AuthResponse>('/auth/phone/verify-otp/', {
+      phoneNumber,
+      otp,
+      baseCurrency,
+      device: {
+        id: deviceId,
+        deviceName: 'Mobile Device',
+        platform: ENV.PLATFORM,
+        clientVersion: ENV.CLIENT_VERSION,
+      },
+    });
+    return res.data;
+  },
+
   async loginWithPhone(idToken: string, deviceId: string, baseCurrency = 'INR'): Promise<AuthResponse> {
     const res = await mobileApiClient.post<AuthResponse>('/auth/phone/', {
       idToken,
@@ -63,6 +90,7 @@ export const mobileAuthApi = {
     });
     return res.data;
   },
+
 
 
   async logout(refreshToken: string, deviceId: string): Promise<void> {
