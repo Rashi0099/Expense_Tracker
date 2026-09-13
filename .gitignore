@@ -71,3 +71,4 @@ mobile/ios/build/
 Thumbs.db
 backend/.pgdata/
 .venv/
+.ec2_db_pass.txt
