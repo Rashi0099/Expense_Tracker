@@ -299,26 +299,45 @@ export class SyncEngine {
 
             // Update local entity status to SYNCED
             if (proc.entityId) {
-              await tx.executeSql(
-                `UPDATE expenses SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
-                [proc.serverVersion, proc.entityId, userId]
-              );
-              await tx.executeSql(
-                `UPDATE income SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
-                [proc.serverVersion, proc.entityId, userId]
-              );
-              await tx.executeSql(
-                `UPDATE categories SET sync_status = 'SYNCED', version = ? WHERE id = ? AND (user_id = ? OR is_system = 1)`,
-                [proc.serverVersion, proc.entityId, userId]
-              );
-              await tx.executeSql(
-                `UPDATE budgets SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
-                [proc.serverVersion, proc.entityId, userId]
-              );
-              await tx.executeSql(
-                `UPDATE recurring_expenses SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
-                [proc.serverVersion, proc.entityId, userId]
-              );
+              const item = pendingItems.find((o) => o.operationId === proc.operationId);
+              const entityType = item?.entityType;
+
+              if (entityType === 'EXPENSE') {
+                await tx.executeSql(
+                  `UPDATE expenses SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
+                  [proc.serverVersion, proc.entityId, userId]
+                );
+              } else if (entityType === 'INCOME') {
+                await tx.executeSql(
+                  `UPDATE income SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
+                  [proc.serverVersion, proc.entityId, userId]
+                );
+              } else if (entityType === 'CATEGORY') {
+                await tx.executeSql(
+                  `UPDATE categories SET version = ? WHERE id = ? AND (user_id = ? OR is_system = 1)`,
+                  [proc.serverVersion, proc.entityId, userId]
+                );
+              } else if (entityType === 'BUDGET') {
+                await tx.executeSql(
+                  `UPDATE budgets SET version = ? WHERE id = ? AND user_id = ?`,
+                  [proc.serverVersion, proc.entityId, userId]
+                );
+              } else if (entityType === 'RECURRING_EXPENSE') {
+                await tx.executeSql(
+                  `UPDATE recurring_expenses SET version = ? WHERE id = ? AND user_id = ?`,
+                  [proc.serverVersion, proc.entityId, userId]
+                );
+              } else {
+                // Fallback for expenses or income if entityType was unspecified
+                await tx.executeSql(
+                  `UPDATE expenses SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
+                  [proc.serverVersion, proc.entityId, userId]
+                );
+                await tx.executeSql(
+                  `UPDATE income SET sync_status = 'SYNCED', version = ? WHERE id = ? AND user_id = ?`,
+                  [proc.serverVersion, proc.entityId, userId]
+                );
+              }
             }
           } else if (proc.status === 'REJECTED') {
             const current = await tx.executeSql<{ retry_count: number }>(
