@@ -11,7 +11,7 @@ import {
 } from '@/utils/tokenStorage';
 import { getOrCreateDeviceId } from '@/utils/device';
 import { parseApiError } from '@/utils/error';
-import { AuthStatus, LoginCredentials, RegisterCredentials, User } from '@/types/auth';
+import { AuthStatus, LoginCredentials, PhoneAuthPayload, RegisterCredentials, User } from '@/types/auth';
 import { AuthContext } from './AuthContext';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -125,6 +125,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Phone authentication handler (Login & Register in one)
+  const loginWithPhone = async (payload: PhoneAuthPayload) => {
+    setError(null);
+    try {
+      const authData = await authApi.loginWithPhone(payload);
+      setAccessToken(authData.tokens.accessToken);
+      setRefreshToken(authData.tokens.refreshToken);
+      setUser(authData.user);
+      setStatus('AUTHENTICATED');
+    } catch (err) {
+      const apiErr = parseApiError(err);
+      setError(apiErr.message);
+      throw apiErr;
+    }
+  };
+
   // Update current user profile (e.g. base currency)
   const updateUser = async (payload: { baseCurrency?: string }) => {
     const updated = await authApi.updateCurrentUser(payload);
@@ -142,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
         login,
         register,
+        loginWithPhone,
         updateUser,
         logout,
         isAuthenticated: status === 'AUTHENTICATED',
@@ -152,3 +169,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+

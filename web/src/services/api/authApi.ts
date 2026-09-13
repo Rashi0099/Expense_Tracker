@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import {
   AuthResponse,
   LoginCredentials,
+  PhoneAuthPayload,
   RegisterCredentials,
   TokenResponse,
   User,
@@ -37,6 +38,21 @@ export const authApi = {
     const response = await apiClient.post<AuthResponse>('/auth/login/', payload);
     return response.data;
   },
+
+  /**
+   * Authenticate or register with Firebase Phone ID Token.
+   * POST /api/v1/auth/phone/
+   */
+  async loginWithPhone(payload: PhoneAuthPayload): Promise<AuthResponse> {
+    const requestPayload = {
+      idToken: payload.idToken,
+      baseCurrency: payload.baseCurrency || 'USD',
+      device: payload.device || getClientDeviceMetadata(),
+    };
+    const response = await apiClient.post<AuthResponse>('/auth/phone/', requestPayload);
+    return response.data;
+  },
+
 
   /**
    * Rotate access and refresh tokens.

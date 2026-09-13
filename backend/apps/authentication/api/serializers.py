@@ -34,14 +34,21 @@ class LogoutSerializer(serializers.Serializer):
     deviceId = serializers.UUIDField()
 
 
+class PhoneAuthSerializer(serializers.Serializer):
+    idToken = serializers.CharField(required=True)
+    baseCurrency = serializers.CharField(max_length=3, default="USD")
+    device = DeviceMetadataSerializer(required=False, default=dict)
+
+
 class UserSerializer(serializers.ModelSerializer):
+    phoneNumber = serializers.CharField(source="phone_number", read_only=True)
     baseCurrency = serializers.CharField(source="base_currency")
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "email", "baseCurrency", "createdAt"]
-        read_only_fields = ["id", "email", "createdAt"]
+        fields = ["id", "email", "phoneNumber", "baseCurrency", "createdAt"]
+        read_only_fields = ["id", "email", "phoneNumber", "createdAt"]
 
 
 class TokenResponseSerializer(serializers.Serializer):
@@ -53,3 +60,4 @@ class TokenResponseSerializer(serializers.Serializer):
 class AuthResponseSerializer(serializers.Serializer):
     user = UserSerializer()
     tokens = TokenResponseSerializer()
+

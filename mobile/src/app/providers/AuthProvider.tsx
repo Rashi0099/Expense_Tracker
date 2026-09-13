@@ -14,6 +14,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, baseCurrency?: string) => Promise<void>;
+  loginWithPhone: (idToken: string, baseCurrency?: string) => Promise<void>;
   logout: () => Promise<void>;
   pendingDeepLink: string | null;
   setPendingDeepLink: (url: string | null) => void;
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   login: async () => {},
   register: async () => {},
+  loginWithPhone: async () => {},
   logout: async () => {},
   pendingDeepLink: null,
   setPendingDeepLink: () => {},
@@ -120,6 +122,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
   };
 
+  const loginWithPhone = async (idToken: string, baseCurrency = 'INR') => {
+    let deviceId = await SecureStorage.getDeviceId();
+    if (!deviceId) {
+      deviceId = generateUUID();
+      await SecureStorage.setDeviceId(deviceId);
+    }
+
+    const res = await mobileAuthApi.loginWithPhone(idToken, deviceId, baseCurrency);
+    tokenStore.setAccessToken(res.tokens.accessToken);
+    await SecureStorage.setRefreshToken(res.tokens.refreshToken);
+    await SecureStorage.setUserData(res.user);
+
+    setUser(res.user);
+    DatabaseManager.getInstance().setCurrentUser(res.user.id);
+    SyncEngine.getInstance().init();
+    SyncEngine.getInstance().sync().catch(() => {});
+    FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
+  };
+
   const logout = async () => {
     try {
       const refreshToken = await SecureStorage.getRefreshToken();
@@ -145,6 +166,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isLoading,
         login,
         register,
+        loginWithPhone,
         logout,
         pendingDeepLink,
         setPendingDeepLink,

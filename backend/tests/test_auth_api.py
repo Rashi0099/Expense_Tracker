@@ -162,3 +162,43 @@ class TestAuthenticationAPI:
         with pytest.raises(DjangoValidationError):
             invalid_u = User(email="bad@example.com", base_currency="INVALID")
             invalid_u.full_clean()
+
+    def test_phone_auth_registration_and_login(self):
+        # 1. New user registration via phone OTP token
+        payload = {
+            "idToken": "mock-phone-token-+919876543210",
+            "baseCurrency": "INR",
+            "device": {
+                "platform": "ANDROID",
+                "deviceName": "Samsung Galaxy S24",
+                "clientVersion": "1.0.0",
+            },
+        }
+        response = self.client.post(reverse("authentication:phone-auth"), payload, format="json")
+        assert response.status_code == 200
+        data = response.json()
+        assert "user" in data
+        assert data["user"]["phoneNumber"] == "+919876543210"
+        assert data["user"]["baseCurrency"] == "INR"
+        assert "tokens" in data
+        assert "accessToken" in data["tokens"]
+        assert "refreshToken" in data["tokens"]
+
+        user = User.objects.get(phone_number="+919876543210")
+        assert user.firebase_uid == "mock_uid_919876543210"
+
+        # 2. Existing user login via phone OTP token
+        response2 = self.client.post(reverse("authentication:phone-auth"), payload, format="json")
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert data2["user"]["phoneNumber"] == "+919876543210"
+        assert User.objects.filter(phone_number="+919876543210").count() == 1
+
+    def test_phone_auth_missing_token_fails(self):
+        response = self.client.post(
+            reverse("authentication:phone-auth"),
+            {"baseCurrency": "USD"},
+            format="json",
+        )
+        assert response.status_code == 400
+

@@ -3,7 +3,8 @@ import { ENV } from '../../app/config/env';
 
 export interface MobileUser {
   id: string;
-  email: string;
+  email?: string | null;
+  phoneNumber?: string | null;
   baseCurrency: string;
   createdAt: string;
 }
@@ -48,6 +49,21 @@ export const mobileAuthApi = {
     });
     return res.data;
   },
+
+  async loginWithPhone(idToken: string, deviceId: string, baseCurrency = 'INR'): Promise<AuthResponse> {
+    const res = await mobileApiClient.post<AuthResponse>('/auth/phone/', {
+      idToken,
+      baseCurrency,
+      device: {
+        id: deviceId,
+        deviceName: 'Mobile Device',
+        platform: ENV.PLATFORM,
+        clientVersion: ENV.CLIENT_VERSION,
+      },
+    });
+    return res.data;
+  },
+
 
   async logout(refreshToken: string, deviceId: string): Promise<void> {
     await mobileApiClient.post('/auth/logout/', {

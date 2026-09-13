@@ -6,13 +6,20 @@ from common.models import BaseModel
 
 
 class UserManager(BaseUserManager):
-    """Custom manager for User model where email is the unique identifier."""
+    """Custom manager for User model supporting email and phone number."""
 
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError("The Email field must be set.")
-        email = self.normalize_email(email).lower()
-        user = self.model(email=email, **extra_fields)
+    def create_user(self, email=None, phone_number=None, password=None, **extra_fields):
+        if not email and not phone_number:
+            raise ValueError("Either Email or Phone Number must be provided.")
+
+        normalized_email = self.normalize_email(email).lower() if email else None
+        normalized_phone = phone_number.strip() if phone_number else None
+
+        user = self.model(
+            email=normalized_email,
+            phone_number=normalized_phone,
+            **extra_fields,
+        )
         if password:
             user.set_password(password)
         else:
@@ -30,13 +37,15 @@ class UserManager(BaseUserManager):
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
 
-        return self.create_user(email, password, **extra_fields)
+        return self.create_user(email=email, password=password, **extra_fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin, BaseModel):
-    """Custom User model using UUIDv7 primary key and email for authentication."""
+    """Custom User model using UUIDv7 primary key, supporting email or phone authentication."""
 
-    email = models.EmailField(unique=True, db_index=True, max_length=255)
+    email = models.EmailField(unique=True, null=True, blank=True, db_index=True, max_length=255)
+    phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True, db_index=True)
+    firebase_uid = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True)
     base_currency = models.CharField(
         max_length=3,
         default="USD",
@@ -66,5 +75,18 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
             )
         ]
 
+    def clean(self):
+        super().clean()
+        if not self.email:
+            self.email = None
+        if not self.phone_number:
+            self.phone_number = None
+        if not self.firebase_uid:
+            self.firebase_uid = None
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.email
+        return self.phone_number or self.email or str(self.id)

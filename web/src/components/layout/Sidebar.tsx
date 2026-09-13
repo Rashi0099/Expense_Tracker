@@ -77,11 +77,11 @@ export const Sidebar: React.FC = () => {
       <div className="pt-4 border-t border-slate-100 px-2">
         <div className="flex items-center gap-3 p-2 rounded-2xl bg-slate-50/80">
           <div className="w-8 h-8 rounded-full bg-pastel-blue text-slate-700 font-bold flex items-center justify-center text-xs shadow-subtle shrink-0">
-            {user?.email?.charAt(0).toUpperCase() || 'U'}
+            {user?.email?.charAt(0).toUpperCase() || user?.phoneNumber?.slice(-2) || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <span className="text-xs font-bold text-slate-800 block truncate" title={user?.email}>
-              {user?.email || 'Authenticated User'}
+            <span className="text-xs font-bold text-slate-800 block truncate" title={user?.phoneNumber || user?.email || undefined}>
+              {user?.phoneNumber || user?.email || 'Authenticated User'}
             </span>
             <span className="text-[10px] text-slate-400 block truncate">Base: {user?.baseCurrency || 'USD'}</span>
           </div>

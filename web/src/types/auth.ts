@@ -1,6 +1,7 @@
 export interface User {
   id: string;
-  email: string;
+  email?: string | null;
+  phoneNumber?: string | null;
   baseCurrency: string;
   createdAt: string;
 }
@@ -42,6 +43,12 @@ export interface RegisterCredentials {
   device?: DeviceMetadata;
 }
 
+export interface PhoneAuthPayload {
+  idToken: string;
+  baseCurrency?: string;
+  device?: DeviceMetadata;
+}
+
 export type AuthStatus = 'INITIALIZING' | 'AUTHENTICATED' | 'UNAUTHENTICATED' | 'REFRESHING';
 
 export interface AuthState {
@@ -56,9 +63,11 @@ export interface AuthContextType {
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
+  loginWithPhone: (payload: PhoneAuthPayload) => Promise<void>;
   updateUser: (payload: { baseCurrency?: string }) => Promise<User>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isInitializing: boolean;
 }
+
 

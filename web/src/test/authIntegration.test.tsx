@@ -16,6 +16,7 @@ let mockAuthValue: AuthContextType = {
   error: null,
   login: mockLogin,
   register: mockRegister,
+  loginWithPhone: vi.fn(),
   updateUser: vi.fn(),
   logout: vi.fn(),
   isAuthenticated: false,
@@ -27,53 +28,34 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 describe('Auth UI Components and Protected Routes', () => {
-  it('LoginPage renders email and password fields and handles empty submit', async () => {
+  it('LoginPage renders mobile phone input and validates empty submit', async () => {
     render(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>
     );
 
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByText('Mobile Number')).toBeInTheDocument();
+    const sendBtn = screen.getByRole('button', { name: /send otp code/i });
+    expect(sendBtn).toBeInTheDocument();
 
-    const submitBtn = screen.getByRole('button', { name: /sign in/i });
-    fireEvent.click(submitBtn);
-
-    // Should render validation banner without calling login
-    expect(await screen.findByText(/please enter both email and password/i)).toBeInTheDocument();
-    expect(mockLogin).not.toHaveBeenCalled();
+    fireEvent.click(sendBtn);
+    expect(await screen.findByText(/please enter your mobile phone number/i)).toBeInTheDocument();
   });
 
-  it('RegisterPage validates password length and confirmation match', async () => {
+  it('RegisterPage renders redirect to login', async () => {
     render(
-      <MemoryRouter>
-        <RegisterPage />
+      <MemoryRouter initialEntries={['/register']}>
+        <Routes>
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<div>Login Page Redirected</div>} />
+        </Routes>
       </MemoryRouter>
     );
 
-    const emailInput = screen.getByLabelText(/email address/i);
-    const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmInput = screen.getByLabelText(/confirm password/i);
-    const submitBtn = screen.getByRole('button', { name: /create free account/i });
-
-    // Test short password
-    fireEvent.change(emailInput, { target: { value: 'user@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'short' } });
-    fireEvent.change(confirmInput, { target: { value: 'short' } });
-    fireEvent.click(submitBtn);
-
-    expect(await screen.findByText(/must be at least 10 characters/i)).toBeInTheDocument();
-    expect(mockRegister).not.toHaveBeenCalled();
-
-    // Test password mismatch
-    fireEvent.change(passwordInput, { target: { value: 'ValidPassword123!' } });
-    fireEvent.change(confirmInput, { target: { value: 'MismatchedPassword123!' } });
-    fireEvent.click(submitBtn);
-
-    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
-    expect(mockRegister).not.toHaveBeenCalled();
+    expect(screen.getByText(/login page redirected/i)).toBeInTheDocument();
   });
+
 
   it('ProtectedRoute redirects unauthenticated users to /login', () => {
     mockAuthValue = {

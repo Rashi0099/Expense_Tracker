@@ -8,12 +8,14 @@ from apps.authentication.api.serializers import (
     AuthResponseSerializer,
     LoginSerializer,
     LogoutSerializer,
+    PhoneAuthSerializer,
     RefreshSerializer,
     RegisterSerializer,
     TokenResponseSerializer,
     UserSerializer,
 )
 from apps.authentication.services.auth_service import (
+    authenticate_or_register_phone_user,
     login_user,
     logout_device,
     refresh_tokens,
@@ -72,6 +74,38 @@ class LoginView(APIView):
             },
         }
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class PhoneAuthView(APIView):
+    """
+    Exchanges a client-verified Firebase ID Token for application JWT tokens.
+    Handles seamless registration (if new) or login (if existing).
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(request=PhoneAuthSerializer, responses={200: AuthResponseSerializer})
+    def post(self, request):
+        serializer = PhoneAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user, access_token, refresh_token, expires_in = authenticate_or_register_phone_user(
+            id_token=serializer.validated_data["idToken"],
+            base_currency=serializer.validated_data.get("baseCurrency", "USD"),
+            device_data=serializer.validated_data.get("device", {}),
+        )
+
+        response_data = {
+            "user": UserSerializer(user).data,
+            "tokens": {
+                "accessToken": access_token,
+                "refreshToken": refresh_token,
+                "expiresIn": expires_in,
+            },
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 
 class RefreshView(APIView):
