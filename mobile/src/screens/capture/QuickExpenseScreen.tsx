@@ -252,18 +252,15 @@ export const QuickExpenseScreen: React.FC = () => {
         </TouchableOpacity>
       )}
 
-      {/* Horizontal Category Selector Chips */}
+      {/* Category Grid Section */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
           Category
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsContainer}
-        >
+        <View style={styles.categoryGrid}>
           {categories.map((cat) => {
             const isSelected = cat.id === selectedCategoryId;
+            const catColor = cat.color || theme.colors.primary;
             return (
               <TouchableOpacity
                 key={cat.id}
@@ -274,38 +271,44 @@ export const QuickExpenseScreen: React.FC = () => {
                   }
                 }}
                 activeOpacity={0.7}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: isSelected
-                      ? theme.colors.primary
-                      : theme.colors.surface,
-                    borderColor: isSelected
-                      ? theme.colors.primary
-                      : theme.colors.surfaceBorder,
-                  },
-                ]}
+                style={styles.categoryGridItem}
                 accessibilityRole="button"
                 accessibilityLabel={cat.name}
                 accessibilityState={{ selected: isSelected }}
               >
-                <Text style={styles.chipIcon}>{cat.icon}</Text>
-                <Text
+                <View
                   style={[
-                    styles.chipLabel,
+                    styles.categoryCircle,
                     {
-                      color: isSelected
-                        ? theme.colors.textInverse
-                        : theme.colors.textPrimary,
+                      backgroundColor: isSelected
+                        ? theme.colors.primary
+                        : `${catColor}18`,
+                      borderColor: isSelected
+                        ? theme.colors.primary
+                        : `${catColor}35`,
                     },
                   ]}
+                >
+                  <Text style={styles.categoryCircleIcon}>{cat.icon}</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.categoryGridLabel,
+                    {
+                      color: isSelected
+                        ? theme.colors.primary
+                        : theme.colors.textPrimary,
+                      fontWeight: isSelected ? '700' : '500',
+                    },
+                  ]}
+                  numberOfLines={1}
                 >
                   {cat.name}
                 </Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
 
       {/* Payment Method Selector Chips */}
@@ -461,22 +464,34 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     gap: 8,
   },
-  categoryChip: {
+  categoryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    marginHorizontal: -4,
+  },
+  categoryGridItem: {
+    width: '25%',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 48,
-    borderRadius: 9999,
+    marginBottom: 14,
+    paddingHorizontal: 2,
+  },
+  categoryCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
   },
-  chipIcon: {
-    fontSize: 16,
-    marginRight: 6,
+  categoryCircleIcon: {
+    fontSize: 22,
   },
-  chipLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+  categoryGridLabel: {
+    fontSize: 11,
+    textAlign: 'center',
+    maxWidth: '100%',
   },
   methodChip: {
     paddingHorizontal: 16,
