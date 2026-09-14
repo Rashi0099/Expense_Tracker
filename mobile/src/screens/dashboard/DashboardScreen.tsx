@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -82,19 +82,45 @@ export const DashboardScreen: React.FC = () => {
     }
   };
 
+  const isDirtyRef = useRef(false);
+  const isFocusedRef = useRef(true);
+
+  // Initial load
   useEffect(() => {
     loadData();
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadData();
+  }, [loadData]);
+
+  // Focus tracking: Only reload on focus if data was mutated while blurred
+  useEffect(() => {
+    const unsubFocus = navigation.addListener('focus', () => {
+      isFocusedRef.current = true;
+      if (isDirtyRef.current) {
+        isDirtyRef.current = false;
+        loadData();
+      }
     });
-    return unsubscribe;
+    const unsubBlur = navigation.addListener('blur', () => {
+      isFocusedRef.current = false;
+    });
+    return () => {
+      unsubFocus();
+      unsubBlur();
+    };
   }, [navigation, loadData]);
 
   // Reactive subscription: auto-refresh whenever local SQLite state changes
   useEffect(() => {
-    const unsubExp = DataEvents.subscribe('EXPENSES_CHANGED', () => loadData());
-    const unsubInc = DataEvents.subscribe('INCOME_CHANGED', () => loadData());
-    const unsubBud = DataEvents.subscribe('BUDGETS_CHANGED', () => loadData());
+    const handleDataChange = () => {
+      if (isFocusedRef.current) {
+        loadData();
+      } else {
+        isDirtyRef.current = true;
+      }
+    };
+
+    const unsubExp = DataEvents.subscribe('EXPENSES_CHANGED', handleDataChange);
+    const unsubInc = DataEvents.subscribe('INCOME_CHANGED', handleDataChange);
+    const unsubBud = DataEvents.subscribe('BUDGETS_CHANGED', handleDataChange);
     return () => {
       unsubExp();
       unsubInc();

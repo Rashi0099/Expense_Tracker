@@ -91,7 +91,8 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
               onPress={onPress}
               onLongPress={onLongPress}
               style={styles.tabButton}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
+              delayPressIn={0}
             >
               <View
                 style={[
@@ -129,7 +130,8 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
             onPress={onPress}
             onLongPress={onLongPress}
             style={styles.tabButton}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
+            delayPressIn={0}
           >
             <View style={styles.iconContainer}>
               {renderIcon(route.name, isFocused, iconColor)}
@@ -160,6 +162,9 @@ export const MainTabNavigator: React.FC = () => {
       tabBar={(props) => <CleanTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        lazy: false,
+        unmountOnBlur: false,
+        freezeOnBlur: false,
       }}
     >
       <Tab.Screen
