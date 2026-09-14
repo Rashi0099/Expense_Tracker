@@ -19,7 +19,7 @@ import { listCategoriesUseCase } from '../../domain/usecases/categoryUseCases';
 import { suggestCategoryAsync } from '../../domain/rules/smartCategorySuggestion';
 import { SQLiteCategoryMemoryRepository } from '../../database/repositories/SQLiteCategoryMemoryRepository';
 import { CategoryModel, PaymentMethod } from '../../domain/models';
-import { dollarsToCents } from '../../utils/money';
+import { dollarsToCents, getCurrencySymbol } from '../../utils/money';
 import { getTodayDateString, formatDisplayDate } from '../../utils/date';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
@@ -75,8 +75,12 @@ export const QuickExpenseScreen: React.FC = () => {
   const handleQuickAdd = (addVal: number) => {
     const current = parseFloat(amount) || 0;
     const next = current + addVal;
-    setAmount(next.toString());
+    const formatted = Number.isInteger(next) ? next.toString() : next.toFixed(2);
+    setAmount(formatted);
     if (error) setError(null);
+    setTimeout(() => {
+      amountInputRef.current?.focus();
+    }, 50);
   };
 
   // Real-time deterministic category suggestion (learned memory -> default rules -> category name)
@@ -255,7 +259,7 @@ export const QuickExpenseScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Large Amount Display: ₹0 + Enter amount */}
+      {/* Large Amount Display: Visible and directly editable input */}
       <TouchableOpacity
         style={[
           styles.amountContainer,
@@ -264,26 +268,31 @@ export const QuickExpenseScreen: React.FC = () => {
         activeOpacity={1}
         onPress={() => amountInputRef.current?.focus()}
       >
-        <Text style={[styles.amountDisplay, { color: theme.colors.textPrimary }]}>
-          ₹{amount || '0'}
-        </Text>
+        <View style={styles.amountInputRow}>
+          <Text style={[styles.currencyPrefixText, { color: theme.colors.textPrimary }]}>
+            {getCurrencySymbol(user?.baseCurrency || 'INR')}
+          </Text>
+          <RNTextInput
+            ref={amountInputRef}
+            value={amount}
+            onChangeText={(val) => {
+              const clean = val.replace(/[^0-9.]/g, '');
+              const parts = clean.split('.');
+              const sanitized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : clean;
+              setAmount(sanitized);
+              if (error) setError(null);
+            }}
+            placeholder="0"
+            placeholderTextColor={theme.colors.textMuted}
+            keyboardType="decimal-pad"
+            style={[styles.amountInput, { color: theme.colors.textPrimary }]}
+            autoFocus
+            selectTextOnFocus={false}
+          />
+        </View>
         <Text style={[styles.amountSubtitle, { color: theme.colors.textSecondary }]}>
           Enter amount
         </Text>
-
-        {/* Real hidden numeric keyboard input */}
-        <RNTextInput
-          ref={amountInputRef}
-          value={amount}
-          onChangeText={(val) => {
-            const clean = val.replace(/[^0-9.]/g, '');
-            setAmount(clean);
-            if (error) setError(null);
-          }}
-          keyboardType="decimal-pad"
-          style={styles.hiddenInput}
-          autoFocus
-        />
       </TouchableOpacity>
 
       {/* Quick-Add Pills: + 100, + 500, + 1,000, + 5,000 */}
@@ -699,25 +708,35 @@ const styles = StyleSheet.create({
   amountContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     marginBottom: 16,
     borderRadius: 18,
-    position: 'relative',
   },
-  amountDisplay: {
+  amountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '90%',
+  },
+  currencyPrefixText: {
+    fontSize: 36,
+    fontWeight: '800',
+    marginRight: 4,
+    letterSpacing: -0.5,
+  },
+  amountInput: {
     fontSize: 40,
     fontWeight: '800',
     letterSpacing: -1,
+    minWidth: 50,
+    paddingVertical: 0,
+    paddingHorizontal: 2,
+    margin: 0,
+    textAlign: 'left',
   },
   amountSubtitle: {
     fontSize: 13,
     marginTop: 4,
-  },
-  hiddenInput: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    opacity: 0.01,
   },
   quickAddRow: {
     flexDirection: 'row',

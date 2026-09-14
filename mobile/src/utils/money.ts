@@ -51,6 +51,23 @@ export function centsToDollars(cents: number): string {
   return `${isNegative ? '-' : ''}${whole}.${fractionStr}`;
 }
 
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  INR: '₹',
+  AED: 'د.إ',
+  SAR: '﷼',
+  CAD: 'CA$',
+  AUD: 'A$',
+  JPY: '¥',
+  SGD: 'S$',
+};
+
+export function getCurrencySymbol(currency = 'USD'): string {
+  return CURRENCY_SYMBOLS[currency.toUpperCase()] || `${currency} `;
+}
+
 /**
  * Formats integer cents for display with standard ISO currency symbols.
  */
@@ -59,17 +76,7 @@ export function formatCurrencyFromCents(
   currency = 'USD'
 ): string {
   const dollars = centsToDollars(cents);
-  const symbols: Record<string, string> = {
-    USD: '$',
-    EUR: '€',
-    GBP: '£',
-    INR: '₹',
-    CAD: 'CA$',
-    AUD: 'A$',
-    JPY: '¥',
-  };
-
-  const symbol = symbols[currency.toUpperCase()] || `${currency} `;
+  const symbol = getCurrencySymbol(currency);
   const isNegative = dollars.startsWith('-');
   const absDollars = isNegative ? dollars.slice(1) : dollars;
 

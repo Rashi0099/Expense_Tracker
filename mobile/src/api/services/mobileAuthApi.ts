@@ -104,4 +104,9 @@ export const mobileAuthApi = {
     const res = await mobileApiClient.get<MobileUser>('/auth/me/');
     return res.data;
   },
+
+  async updateProfile(params: { baseCurrency?: string }): Promise<MobileUser> {
+    const res = await mobileApiClient.patch<MobileUser>('/auth/me/', params);
+    return res.data;
+  },
 };

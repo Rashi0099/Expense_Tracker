@@ -7,6 +7,7 @@ import { SQLiteCategoryRepository } from '../../database/repositories/SQLiteCate
 import { SyncEngine } from '../../sync/engine/SyncEngine';
 import { FCMPushService } from '../../services/fcmPushService';
 import { generateUUID } from '../../utils/uuid';
+import { DataEvents } from '../../database/sqlite/DataEvents';
 
 interface AuthContextType {
   user: MobileUser | null;
@@ -17,6 +18,7 @@ interface AuthContextType {
   loginWithPhone: (idToken: string, baseCurrency?: string) => Promise<void>;
   loginWithPhoneOtp: (phoneNumber: string, otp: string, baseCurrency?: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateBaseCurrency: (currency: string) => Promise<void>;
   pendingDeepLink: string | null;
   setPendingDeepLink: (url: string | null) => void;
   consumePendingDeepLink: () => string | null;
@@ -31,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithPhone: async () => {},
   loginWithPhoneOtp: async () => {},
   logout: async () => {},
+  updateBaseCurrency: async () => {},
   pendingDeepLink: null,
   setPendingDeepLink: () => {},
   consumePendingDeepLink: () => null,
@@ -180,6 +183,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateBaseCurrency = async (newCurrency: string) => {
+    if (!user) return;
+    const updatedUser: MobileUser = { ...user, baseCurrency: newCurrency };
+    setUser(updatedUser);
+    await SecureStorage.setUserData(updatedUser);
+    DataEvents.notify('EXPENSES_CHANGED');
+    DataEvents.notify('INCOME_CHANGED');
+    DataEvents.notify('BUDGETS_CHANGED');
+    // Also update server profile in background if online
+    mobileAuthApi.updateProfile({ baseCurrency: newCurrency }).catch(() => {});
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -191,6 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loginWithPhone,
         loginWithPhoneOtp,
         logout,
+        updateBaseCurrency,
         pendingDeepLink,
         setPendingDeepLink,
         consumePendingDeepLink,

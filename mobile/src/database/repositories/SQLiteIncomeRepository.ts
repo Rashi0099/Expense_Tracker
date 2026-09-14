@@ -225,6 +225,10 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
       query += ` AND i.category_id = ?`;
       params.push(filters.categoryId);
     }
+    if (filters?.paymentMethod) {
+      query += ` AND i.payment_method = ?`;
+      params.push(filters.paymentMethod);
+    }
     if (filters?.startDate) {
       query += ` AND i.transaction_date >= ?`;
       params.push(filters.startDate);

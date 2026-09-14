@@ -90,14 +90,14 @@ export const ExpensesListScreen: React.FC = () => {
   useEffect(() => {
     async function loadCats() {
       try {
-        const cats = await listCategoriesUseCase('EXPENSE');
+        const cats = await listCategoriesUseCase(selectedTab);
         setCategories(cats);
       } catch {
         // Handled
       }
     }
     loadCats();
-  }, []);
+  }, [selectedTab]);
 
   // Fetch paginated expenses from local SQLite
   const loadExpenses = useCallback(
@@ -133,12 +133,14 @@ export const ExpensesListScreen: React.FC = () => {
     [debouncedSearch, selectedCategory, selectedPaymentMethod]
   );
 
-  // Fetch incomes from local SQLite
+  // Fetch incomes from local SQLite with category and payment method filters
   const loadIncomes = useCallback(async () => {
     setIsLoading(true);
     try {
       const list = await listIncomeUseCase({
         search: debouncedSearch.trim() || undefined,
+        categoryId: selectedCategory || undefined,
+        paymentMethod: selectedPaymentMethod || undefined,
       });
       setIncomes(list);
     } catch {
@@ -146,7 +148,7 @@ export const ExpensesListScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, selectedCategory, selectedPaymentMethod]);
 
   // Reload when filters or search change
   useEffect(() => {
@@ -313,36 +315,34 @@ export const ExpensesListScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* Right Header Action */}
-        {selectedTab === 'EXPENSE' ? (
-          <TouchableOpacity
-            onPress={() => setIsFilterSheetOpen(true)}
-            style={[
-              styles.filterButton,
-              {
-                backgroundColor: activeFiltersCount > 0 ? theme.colors.primary : theme.colors.surface,
-                borderColor: theme.colors.surfaceBorder,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Open filter sheet. ${activeFiltersCount} filters currently active.`}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <IconFilter
-                color={activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary}
-                size={13}
-              />
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
-                ]}
-              >
-                Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ) : null}
+        {/* Right Header Action: Unified Filter for both Expense and Income */}
+        <TouchableOpacity
+          onPress={() => setIsFilterSheetOpen(true)}
+          style={[
+            styles.filterButton,
+            {
+              backgroundColor: activeFiltersCount > 0 ? theme.colors.primary : theme.colors.surface,
+              borderColor: theme.colors.surfaceBorder,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={`Open filter sheet. ${activeFiltersCount} filters currently active.`}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <IconFilter
+              color={activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary}
+              size={13}
+            />
+            <Text
+              style={[
+                styles.filterButtonText,
+                { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
+              ]}
+            >
+              Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Search Input */}
@@ -636,11 +636,11 @@ export const ExpensesListScreen: React.FC = () => {
         />
       )}
 
-      {/* Advanced Filter Bottom Sheet (for Expenses) */}
+      {/* Advanced Filter Bottom Sheet (for Expenses & Income) */}
       <BottomSheet
         visible={isFilterSheetOpen}
         onClose={() => setIsFilterSheetOpen(false)}
-        title="Filter Expenses"
+        title={selectedTab === 'EXPENSE' ? 'Filter Expenses' : 'Filter Income'}
       >
         {/* Category Filters */}
         <View style={styles.sheetSection}>

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
+import { BottomSheet } from '../../components/common/BottomSheet';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
 import { ENV } from '../../app/config/env';
@@ -11,11 +12,27 @@ import { NotificationService, NotificationSettings } from '../../services/notifi
 import { reminderService } from '../../services/reminderService';
 import { hotUpdateService, UpdateCheckResult } from '../../services/HotUpdateService';
 import { HotUpdateModal } from '../../components/common/HotUpdateModal';
+import { getCurrencySymbol } from '../../utils/money';
+
+const AVAILABLE_CURRENCIES = [
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
+  { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal' },
+  { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+];
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { user, logout } = useAuth();
+  const { user, logout, updateBaseCurrency } = useAuth();
   const { theme, isDark, toggleTheme } = useTheme();
+
+  const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
     recurringRemindersEnabled: true,
@@ -134,12 +151,21 @@ export const SettingsScreen: React.FC = () => {
             {user?.phoneNumber || user?.email || 'N/A'}
           </Text>
         </View>
-        <View style={styles.row}>
+        <TouchableOpacity
+          style={styles.row}
+          activeOpacity={0.7}
+          onPress={() => setIsCurrencyModalOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Change base currency. Current currency is ${user?.baseCurrency || 'INR'}`}
+        >
           <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Base Currency</Text>
-          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {user?.baseCurrency || 'USD'}
-          </Text>
-        </View>
+          <View style={styles.currencyValueRight}>
+            <Text style={[styles.value, { color: theme.colors.primary, fontWeight: '700' }]}>
+              {user?.baseCurrency || 'INR'} ({getCurrencySymbol(user?.baseCurrency || 'INR')})
+            </Text>
+            <Text style={[styles.chevronSmall, { color: theme.colors.textMuted }]}>›</Text>
+          </View>
+        </TouchableOpacity>
       </Card>
 
       {/* Feature Management Links */}
@@ -338,6 +364,81 @@ export const SettingsScreen: React.FC = () => {
           setAppVersion(ver);
         }}
       />
+
+      {/* Base Currency Selection Bottom Sheet */}
+      <BottomSheet
+        visible={isCurrencyModalOpen}
+        onClose={() => setIsCurrencyModalOpen(false)}
+        title="Select Base Currency"
+      >
+        <View style={styles.currencyListContainer}>
+          {AVAILABLE_CURRENCIES.map((item) => {
+            const isSelected = (user?.baseCurrency || 'INR') === item.code;
+            return (
+              <TouchableOpacity
+                key={item.code}
+                style={[
+                  styles.currencyRow,
+                  {
+                    backgroundColor: isSelected
+                      ? `${theme.colors.primary}18`
+                      : theme.colors.surfaceSubtle,
+                    borderColor: isSelected
+                      ? theme.colors.primary
+                      : theme.colors.surfaceBorder,
+                  },
+                ]}
+                activeOpacity={0.7}
+                onPress={async () => {
+                  await updateBaseCurrency(item.code);
+                  setIsCurrencyModalOpen(false);
+                }}
+              >
+                <View style={styles.currencyLeft}>
+                  <View
+                    style={[
+                      styles.currencySymbolBadge,
+                      {
+                        backgroundColor: isSelected
+                          ? theme.colors.primary
+                          : theme.colors.surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.currencySymbolText,
+                        { color: isSelected ? '#FFFFFF' : theme.colors.textPrimary },
+                      ]}
+                    >
+                      {item.symbol}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text
+                      style={[
+                        styles.currencyCodeText,
+                        {
+                          color: isSelected ? theme.colors.primary : theme.colors.textPrimary,
+                          fontWeight: isSelected ? '700' : '600',
+                        },
+                      ]}
+                    >
+                      {item.code}
+                    </Text>
+                    <Text style={[styles.currencyNameText, { color: theme.colors.textMuted }]}>
+                      {item.name}
+                    </Text>
+                  </View>
+                </View>
+                {isSelected && (
+                  <Text style={[styles.checkmarkText, { color: theme.colors.primary }]}>✓</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
     </Screen>
   );
 };
@@ -447,5 +548,53 @@ const styles = StyleSheet.create({
   testNotifText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  currencyValueRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chevronSmall: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  currencyListContainer: {
+    gap: 8,
+    paddingBottom: 16,
+  },
+  currencyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  currencyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  currencySymbolBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  currencySymbolText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  currencyCodeText: {
+    fontSize: 15,
+  },
+  currencyNameText: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  checkmarkText: {
+    fontSize: 18,
+    fontWeight: '800',
   },
 });

@@ -2,6 +2,7 @@ import { IncomeModel, PaymentMethod } from '../../../domain/models';
 
 export interface IncomeFilters {
   categoryId?: string;
+  paymentMethod?: PaymentMethod;
   startDate?: string;
   endDate?: string;
   search?: string;

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
@@ -15,6 +16,7 @@ import { SectionHeader } from '../../components/common/SectionHeader';
 import {
   getDashboardSummaryUseCase,
   DashboardSummary,
+  UnifiedTransaction,
 } from '../../domain/usecases/dashboardUseCases';
 import {
   getMonthlyBudgetOverviewUseCase,
@@ -44,6 +46,7 @@ export const DashboardScreen: React.FC = () => {
     totalExpensesCents: 0,
     recentExpenses: [],
     recentIncome: [],
+    recentTransactions: [],
     categorySpending: [],
     pendingSyncCount: 0,
   });
@@ -128,7 +131,7 @@ export const DashboardScreen: React.FC = () => {
     };
   }, [loadData]);
 
-  const currency = user?.baseCurrency || 'USD';
+  const currency = user?.baseCurrency || 'INR';
   const overallBudget = budgetOverview?.overallBudget;
   const budgetStatus = overallBudget ? calculateBudgetStatus(overallBudget.percentageUsed) : null;
 
@@ -155,15 +158,6 @@ export const DashboardScreen: React.FC = () => {
           />
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>CashFlow</Text>
         </View>
-        <TouchableOpacity
-          style={styles.bellButton}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('Settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Notifications and Settings"
-        >
-          <Text style={styles.bellIcon}>🔔</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Standalone Cashflow Overview Card (Total Balance + Side-by-side Income & Expenses) */}
@@ -244,7 +238,11 @@ export const DashboardScreen: React.FC = () => {
             </Text>
           </View>
         ) : (
-          <View style={styles.horizontalCategoryScrollWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalCategoryScrollWrapper}
+          >
             {summary.categorySpending.map((cat, idx) => {
               const pastelBgs = ['#FEF3C7', '#E0E7FF', '#FCE7F3', '#D1FAE5', '#E0F2FE', '#FEE2E2', '#EDE9FE', '#F3F4F6'];
               const tileBg = pastelBgs[idx % pastelBgs.length];
@@ -285,7 +283,7 @@ export const DashboardScreen: React.FC = () => {
                 </View>
               );
             })}
-          </View>
+          </ScrollView>
         )}
       </View>
 
@@ -303,59 +301,68 @@ export const DashboardScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {summary.recentExpenses.length === 0 ? (
+        {(!summary.recentTransactions || summary.recentTransactions.length === 0) ? (
           <Card style={styles.emptyCard}>
             <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
               No transactions recorded yet. Tap &quot;+&quot; below to add your first transaction.
             </Text>
           </Card>
         ) : (
-          summary.recentExpenses.slice(0, 5).map((exp) => (
-            <Card key={exp.id} style={styles.transactionCard}>
-              <View style={styles.txLeft}>
-                <View
-                  style={[
-                    styles.txIconBox,
-                    {
-                      backgroundColor:
-                        exp.categoryName === 'Food' || exp.categoryIcon === '🍴'
-                          ? '#FEF3C7'
-                          : exp.categoryName === 'Transport' || exp.categoryIcon === '🚗'
-                          ? '#E0E7FF'
-                          : exp.categoryName === 'Shopping' || exp.categoryIcon === '🛍️'
-                          ? '#FCE7F3'
-                          : '#D1FAE5',
-                    },
-                  ]}
-                >
-                  <Text style={styles.txIcon}>{exp.categoryIcon || '🏷️'}</Text>
+          summary.recentTransactions.map((tx) => {
+            const isIncome = tx.transactionType === 'INCOME';
+            const incomeItem = isIncome ? (tx as any) : null;
+            const expenseItem = !isIncome ? (tx as any) : null;
+
+            const title = isIncome
+              ? incomeItem?.source || incomeItem?.categoryName || 'Income'
+              : expenseItem?.payee || expenseItem?.categoryName || 'Expense';
+
+            const subtitle = `${formatDisplayDate(tx.transactionDate)} • ${(tx.paymentMethod || 'CASH').replace('_', ' ')}`;
+            const icon = tx.categoryIcon || (isIncome ? '💼' : '🏷️');
+
+            const iconBg = isIncome
+              ? '#D1FAE5'
+              : tx.categoryName === 'Food' || tx.categoryIcon === '🍴'
+              ? '#FEF3C7'
+              : tx.categoryName === 'Transport' || tx.categoryIcon === '🚗'
+              ? '#E0E7FF'
+              : tx.categoryName === 'Shopping' || tx.categoryIcon === '🛍️'
+              ? '#FCE7F3'
+              : '#FEE2E2';
+
+            return (
+              <Card key={tx.id} style={styles.transactionCard}>
+                <View style={styles.txLeft}>
+                  <View style={[styles.txIconBox, { backgroundColor: iconBg }]}>
+                    <Text style={styles.txIcon}>{icon}</Text>
+                  </View>
+                  <View style={styles.txInfo}>
+                    <Text
+                      style={[styles.txTitle, { color: theme.colors.textPrimary }]}
+                      numberOfLines={1}
+                    >
+                      {title}
+                    </Text>
+                    <Text style={[styles.txDate, { color: theme.colors.textSecondary }]}>
+                      {subtitle}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.txInfo}>
-                  <Text
-                    style={[styles.txTitle, { color: theme.colors.textPrimary }]}
-                    numberOfLines={1}
-                  >
-                    {exp.payee || exp.categoryName || 'Expense'}
-                  </Text>
-                  <Text style={[styles.txDate, { color: theme.colors.textSecondary }]}>
-                    {formatDisplayDate(exp.transactionDate)} • {exp.paymentMethod}
-                  </Text>
+                <View style={styles.txRight}>
+                  <CurrencyText
+                    amountCents={tx.amountCents}
+                    currency={tx.currency}
+                    type={isIncome ? 'income' : 'expense'}
+                    showSign
+                    style={styles.txAmount}
+                  />
+                  {tx.syncStatus === 'PENDING' && (
+                    <Text style={[styles.syncBadge, { color: theme.colors.warning }]}>• Offline</Text>
+                  )}
                 </View>
-              </View>
-              <View style={styles.txRight}>
-                <CurrencyText
-                  amountCents={exp.amountCents}
-                  currency={exp.currency}
-                  type="expense"
-                  showSign
-                  style={styles.txAmount}
-                />
-                {exp.syncStatus === 'PENDING' && (
-                  <Text style={[styles.syncBadge, { color: theme.colors.warning }]}>• Offline</Text>
-                )}
-              </View>
-            </Card>
-          ))
+              </Card>
+            );
+          })
         )}
       </View>
     </Screen>

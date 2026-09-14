@@ -24,12 +24,17 @@ export interface CashflowMetrics {
   totalExpensesCents: number;
 }
 
+export type UnifiedTransaction =
+  | (ExpenseModel & { transactionType: 'EXPENSE' })
+  | (IncomeModel & { transactionType: 'INCOME' });
+
 export interface DashboardSummary {
   netBalanceCents: number;
   totalIncomeCents: number;
   totalExpensesCents: number;
   recentExpenses: ExpenseModel[];
   recentIncome: IncomeModel[];
+  recentTransactions: UnifiedTransaction[];
   categorySpending: CategorySpending[];
   pendingSyncCount: number;
 }
@@ -176,12 +181,31 @@ export async function getDashboardSummaryUseCase(dateRange?: {
     .sort((a, b) => b.totalCents - a.totalCents)
     .slice(0, 4);
 
+  const taggedExpenses: UnifiedTransaction[] = recentExpenses.map((e) => ({
+    ...e,
+    transactionType: 'EXPENSE' as const,
+  }));
+  const taggedIncome: UnifiedTransaction[] = recentIncome.map((i) => ({
+    ...i,
+    transactionType: 'INCOME' as const,
+  }));
+
+  const recentTransactions: UnifiedTransaction[] = [...taggedExpenses, ...taggedIncome]
+    .sort((a, b) => {
+      if (a.transactionDate !== b.transactionDate) {
+        return b.transactionDate.localeCompare(a.transactionDate);
+      }
+      return b.createdAt.localeCompare(a.createdAt);
+    })
+    .slice(0, 5);
+
   return {
     netBalanceCents,
     totalIncomeCents,
     totalExpensesCents,
     recentExpenses,
     recentIncome,
+    recentTransactions,
     categorySpending,
     pendingSyncCount,
   };
