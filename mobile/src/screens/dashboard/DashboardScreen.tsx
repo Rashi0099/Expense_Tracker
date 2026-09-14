@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
@@ -109,7 +108,7 @@ export const DashboardScreen: React.FC = () => {
 
   const [budgetOverview, setBudgetOverview] = useState<MonthlyBudgetOverview | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<DashboardFilter>('THIS_MONTH');
-  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadData = useCallback(
@@ -135,7 +134,7 @@ export const DashboardScreen: React.FC = () => {
 
   const handleSelectFilter = (filter: DashboardFilter) => {
     setSelectedFilter(filter);
-    setShowFilterModal(false);
+    setShowDropdown(false);
     loadData(filter);
   };
 
@@ -214,7 +213,12 @@ export const DashboardScreen: React.FC = () => {
 
             <View style={styles.balanceTexts}>
               <Text style={styles.balanceTag}>NET CASHFLOW BALANCE</Text>
-              <Text style={styles.balanceBigNumber}>
+              <Text
+                style={styles.balanceBigNumber}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {formatCurrencyFromCents(summary.netBalanceCents, currency)}
               </Text>
               <Text style={styles.balanceSubNotice}>
@@ -227,17 +231,60 @@ export const DashboardScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Right: Filter Pill Button */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setShowFilterModal(true)}
-            style={styles.filterPill}
-            accessibilityRole="button"
-            accessibilityLabel={`Filter: ${FILTER_LABELS[selectedFilter]}`}
-          >
-            <Text style={styles.filterPillText}>{FILTER_LABELS[selectedFilter]}</Text>
-            <Text style={styles.filterPillChevron}>⌵</Text>
-          </TouchableOpacity>
+          {/* Right: Fast Inline Filter Dropdown */}
+          <View style={styles.filterPillWrapper}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setShowDropdown((prev) => !prev)}
+              style={styles.filterPill}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter: ${FILTER_LABELS[selectedFilter]}`}
+            >
+              <Text style={styles.filterPillText}>{FILTER_LABELS[selectedFilter]}</Text>
+              <Text style={styles.filterPillChevron}>{showDropdown ? '▴' : '▾'}</Text>
+            </TouchableOpacity>
+
+            {/* Fast Dropdown Menu right under pill button */}
+            {showDropdown && (
+              <>
+                <TouchableOpacity
+                  style={styles.dropdownBackdrop}
+                  activeOpacity={1}
+                  onPress={() => setShowDropdown(false)}
+                />
+                <View style={styles.dropdownMenu}>
+                  {FILTER_OPTIONS.map((opt) => {
+                    const isSelected = opt.value === selectedFilter;
+                    return (
+                      <TouchableOpacity
+                        key={opt.value}
+                        onPress={() => handleSelectFilter(opt.value)}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.dropdownItem,
+                          isSelected && styles.dropdownItemSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.dropdownItemText,
+                            isSelected
+                              ? styles.dropdownItemTextSelected
+                              : styles.dropdownItemTextNormal,
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                        {isSelected && (
+                          <Text style={styles.dropdownItemCheck}>✓</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+          </View>
         </View>
 
         {/* Divider Line */}
@@ -287,58 +334,6 @@ export const DashboardScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Filter Selection Modal */}
-      <Modal
-        visible={showFilterModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowFilterModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowFilterModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Time Period</Text>
-              <TouchableOpacity
-                onPress={() => setShowFilterModal(false)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={styles.modalClose}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            {FILTER_OPTIONS.map((opt) => {
-              const isSelected = opt.value === selectedFilter;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => handleSelectFilter(opt.value)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.filterOptionItem,
-                    isSelected && styles.filterOptionItemSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterOptionText,
-                      isSelected ? styles.filterOptionTextSelected : styles.filterOptionTextNormal,
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                  {isSelected && (
-                    <Text style={styles.filterOptionCheck}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       {/* Concise Monthly Budget Status Card */}
       <View style={styles.section}>
@@ -559,17 +554,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 4,
+    overflow: 'visible',
   },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    zIndex: 100,
   },
   walletAndInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 6,
   },
   walletBadge: {
     width: 46,
@@ -619,10 +616,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   balanceBigNumber: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginTop: 3,
+    marginTop: 2,
     marginBottom: 2,
   },
   balanceSubNotice: {
@@ -630,13 +627,17 @@ const styles = StyleSheet.create({
     color: '#8F9BB3',
     fontWeight: '500',
   },
+  filterPillWrapper: {
+    position: 'relative',
+    zIndex: 1000,
+  },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#20273F',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     gap: 4,
   },
   filterPillText: {
@@ -645,9 +646,63 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   filterPillChevron: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#8F9BB3',
     fontWeight: '700',
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: -500,
+    bottom: -800,
+    left: -500,
+    right: -500,
+    zIndex: 998,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 34,
+    right: 0,
+    width: 125,
+    backgroundColor: '#1B2138',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2D385A',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    zIndex: 999,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+    borderRadius: 8,
+    marginVertical: 1,
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(99, 102, 241, 0.22)',
+  },
+  dropdownItemText: {
+    fontSize: 12,
+  },
+  dropdownItemTextNormal: {
+    color: '#C5CEE0',
+    fontWeight: '500',
+  },
+  dropdownItemTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  dropdownItemCheck: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6366F1',
   },
   cardDivider: {
     height: 1,
@@ -718,73 +773,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 36,
     backgroundColor: '#232A42',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    width: '100%',
-    maxWidth: 320,
-    backgroundColor: '#1A2035',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#2A3352',
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 6,
-    paddingTop: 4,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  modalClose: {
-    fontSize: 16,
-    color: '#8F9BB3',
-    fontWeight: '700',
-  },
-  filterOptionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    marginVertical: 3,
-  },
-  filterOptionItemSelected: {
-    backgroundColor: 'rgba(100, 116, 235, 0.18)',
-  },
-  filterOptionText: {
-    fontSize: 14,
-  },
-  filterOptionTextNormal: {
-    color: '#C5CEE0',
-    fontWeight: '500',
-  },
-  filterOptionTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  filterOptionCheck: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#6366F1',
   },
   section: {
     marginBottom: 20,
