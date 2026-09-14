@@ -457,7 +457,7 @@ export const QuickExpenseScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Save Action Buttons */}
+      {/* Save Action Button */}
       <View style={styles.actionsContainer}>
         <Button
           label="Save Expense"
@@ -468,17 +468,6 @@ export const QuickExpenseScreen: React.FC = () => {
           style={styles.saveButton}
           accessibilityLabel="Save expense and return to dashboard"
         />
-        <TouchableOpacity
-          onPress={handleSaveAndAddAnother}
-          disabled={isSaving}
-          style={styles.consecutiveLink}
-          accessibilityRole="button"
-          accessibilityLabel="Save expense and add another immediately"
-        >
-          <Text style={[styles.consecutiveLinkText, { color: theme.colors.primary }]}>
-            + Save & Add Another
-          </Text>
-        </TouchableOpacity>
       </View>
     </Screen>
   );
