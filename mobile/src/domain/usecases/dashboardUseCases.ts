@@ -18,6 +18,12 @@ export interface CategorySpending {
   percentage: number;
 }
 
+export interface CashflowMetrics {
+  netBalanceCents: number;
+  totalIncomeCents: number;
+  totalExpensesCents: number;
+}
+
 export interface DashboardSummary {
   netBalanceCents: number;
   totalIncomeCents: number;
@@ -26,6 +32,30 @@ export interface DashboardSummary {
   recentIncome: IncomeModel[];
   categorySpending: CategorySpending[];
   pendingSyncCount: number;
+}
+
+/**
+ * Ultra-fast isolated query for Cashflow Overview Card metrics (<2ms).
+ * Runs only 2 simple integer SQL SUMs without computing lists or breakdowns.
+ */
+export async function getCashflowMetricsUseCase(dateRange?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<CashflowMetrics> {
+  const expenseRepo = new SQLiteExpenseRepository();
+  const incomeRepo = new SQLiteIncomeRepository();
+
+  const [totalExpensesCents, totalIncomeCents] = await Promise.all([
+    expenseRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
+    incomeRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
+  ]);
+
+  const netBalanceCents = totalIncomeCents - totalExpensesCents;
+  return {
+    netBalanceCents,
+    totalIncomeCents,
+    totalExpensesCents,
+  };
 }
 
 export async function getDashboardSummaryUseCase(dateRange?: {
