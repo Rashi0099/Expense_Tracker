@@ -10,8 +10,6 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
-import { MoneyInput } from '../../components/forms/MoneyInput';
-import { TextInput } from '../../components/forms/TextInput';
 import { Button } from '../../components/common/Button';
 import { createExpenseUseCase } from '../../domain/usecases/expenseUseCases';
 import { createIncomeUseCase } from '../../domain/usecases/incomeUseCases';

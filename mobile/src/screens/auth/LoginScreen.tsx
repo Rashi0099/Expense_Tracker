@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../app/navigation/types';
 import { Screen } from '../../components/common/Screen';
@@ -89,6 +89,11 @@ export const LoginScreen: React.FC<Props> = () => {
   return (
     <Screen scrollable contentContainerStyle={styles.container}>
       <View style={styles.header}>
+        <Image
+          source={require('../../assets/logo_round.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text
           style={[
             styles.badge,
@@ -98,11 +103,11 @@ export const LoginScreen: React.FC<Props> = () => {
           Fast Mobile Sign-In
         </Text>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-          {otpStep === 'PHONE_INPUT' ? 'Welcome to ExpenseFlow' : 'Verify Your Number'}
+          {otpStep === 'PHONE_INPUT' ? 'Welcome to CashFlow' : 'Verify Your Number'}
         </Text>
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           {otpStep === 'PHONE_INPUT'
-            ? 'Enter your mobile number to sign in or register instantly'
+            ? 'Track Today For a Brighter Tomorrow'
             : `6-digit OTP code sent to ${phoneNumber}`}
         </Text>
       </View>
@@ -217,8 +222,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    marginBottom: 32,
-    marginTop: 20,
+    marginBottom: 28,
+    marginTop: 10,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    marginBottom: 12,
   },
   badge: {
     alignSelf: 'flex-start',
