@@ -26,6 +26,18 @@ class MainApplication : Application(), ReactApplication {
         override fun getJSBundleFile(): String? {
           val otaDir = File(applicationContext.filesDir, "ota_bundle")
           val versionFile = File(otaDir, "version.txt")
+
+          try {
+            val packageInfo = applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
+            val apkLastUpdateTime = packageInfo.lastUpdateTime
+            if (versionFile.exists() && versionFile.lastModified() < apkLastUpdateTime) {
+              // App binary was updated or installed after the OTA bundle was stored;
+              // purge stale OTA bundle so the new APK's bundle runs cleanly.
+              otaDir.deleteRecursively()
+              return super.getJSBundleFile()
+            }
+          } catch (_: Exception) {}
+
           if (versionFile.exists() && versionFile.isFile) {
             val version = versionFile.readText().trim()
             val versionedBundle = File(otaDir, "bundle_$version.bundle")
