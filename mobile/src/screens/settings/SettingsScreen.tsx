@@ -9,7 +9,6 @@ import { useTheme } from '../../theme/useTheme';
 import { useSync } from '../../sync/hooks/useSync';
 import { ENV } from '../../app/config/env';
 import { NotificationService, NotificationSettings } from '../../services/notificationService';
-import { useScreenPrivacy } from '../../components/common/ScreenPrivacyShield';
 import { hotUpdateService, UpdateCheckResult } from '../../services/HotUpdateService';
 import { HotUpdateModal } from '../../components/common/HotUpdateModal';
 
@@ -17,7 +16,6 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const { theme, isDark, toggleTheme } = useTheme();
-  const { isPrivacyShieldEnabled, setPrivacyShieldEnabled } = useScreenPrivacy();
   const { pendingCount } = useSync();
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
@@ -275,30 +273,7 @@ export const SettingsScreen: React.FC = () => {
         </View>
       </Card>
 
-      {/* Privacy & Security Card (Section 40) */}
-      <Card style={styles.card}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-          Privacy & Security
-        </Text>
-        <View style={styles.row}>
-          <View style={styles.notifTextContainer}>
-            <Text style={[styles.label, { color: theme.colors.textPrimary, fontWeight: '600' }]}>
-              Recent Apps Shield
-            </Text>
-            <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted }]}>
-              Hide balances and transactions when switching between apps
-            </Text>
-          </View>
-          <Switch
-            value={isPrivacyShieldEnabled}
-            onValueChange={() => setPrivacyShieldEnabled(!isPrivacyShieldEnabled)}
-            trackColor={{ false: theme.colors.surfaceBorder, true: theme.colors.primary }}
-            thumbColor="#FFFFFF"
-            accessibilityRole="switch"
-            accessibilityLabel="Toggle recent apps privacy shield"
-          />
-        </View>
-      </Card>
+
 
       {/* Preferences Card */}
       <Card style={styles.card}>

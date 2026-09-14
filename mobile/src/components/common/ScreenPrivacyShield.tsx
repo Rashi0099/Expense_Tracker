@@ -35,23 +35,10 @@ interface ScreenPrivacyShieldProps {
 
 export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ children }) => {
   const { theme } = useTheme();
-  const [isEnabled, setIsEnabled] = useState(true);
   const [isShieldActive, setIsShieldActive] = useState(false);
 
   useEffect(() => {
-    // Load persisted setting
-    AsyncStorage.getItem(PRIVACY_SETTING_KEY).then((val) => {
-      if (val !== null) {
-        setIsEnabled(val === 'true');
-      }
-    });
-
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (!isEnabled) {
-        setIsShieldActive(false);
-        return;
-      }
-
       if (nextAppState === 'inactive' || nextAppState === 'background') {
         setIsShieldActive(true);
       } else if (nextAppState === 'active') {
@@ -62,27 +49,19 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
     return () => {
       subscription.remove();
     };
-  }, [isEnabled]);
-
-  const handleSetEnabled = async (enabled: boolean) => {
-    setIsEnabled(enabled);
-    await AsyncStorage.setItem(PRIVACY_SETTING_KEY, String(enabled));
-    if (!enabled) {
-      setIsShieldActive(false);
-    }
-  };
+  }, []);
 
   return (
     <ScreenPrivacyContext.Provider
       value={{
-        isPrivacyShieldEnabled: isEnabled,
-        setPrivacyShieldEnabled: handleSetEnabled,
+        isPrivacyShieldEnabled: true,
+        setPrivacyShieldEnabled: async () => {},
       }}
     >
       <View style={styles.container}>
         {children}
 
-        {isShieldActive && isEnabled && (
+        {isShieldActive && (
           <View
             style={[
               styles.shieldOverlay,
