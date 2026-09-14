@@ -16,6 +16,7 @@ import { RecurringExpensesScreen } from '../../screens/recurring/RecurringExpens
 import { useAuth } from '../providers/AuthProvider';
 import { LoadingState } from '../../components/common/LoadingState';
 import { useTheme } from '../../theme/useTheme';
+import { APP_LOGO } from '../../assets/appLogo';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -114,7 +115,7 @@ export const RootNavigator: React.FC = () => {
     return (
       <View style={[styles.loading, { backgroundColor: theme.colors.background }]}>
         <Image
-          source={require('../../assets/logo_round.png')}
+          source={APP_LOGO}
           style={styles.splashLogo}
           resizeMode="contain"
         />

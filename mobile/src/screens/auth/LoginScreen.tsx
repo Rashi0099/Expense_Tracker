@@ -8,6 +8,7 @@ import { Button } from '../../components/common/Button';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
 import { mobileAuthApi } from '../../api/services/mobileAuthApi';
+import { APP_LOGO } from '../../assets/appLogo';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -90,7 +91,7 @@ export const LoginScreen: React.FC<Props> = () => {
     <Screen scrollable contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Image
-          source={require('../../assets/logo_round.png')}
+          source={APP_LOGO}
           style={styles.logo}
           resizeMode="contain"
         />

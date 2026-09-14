@@ -14,6 +14,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../theme/useTheme';
+import { APP_LOGO } from '../../assets/appLogo';
 
 const PRIVACY_SETTING_KEY = '@settings/privacy_shield_enabled';
 
@@ -72,7 +73,7 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
             ]}
           >
             <Image
-              source={require('../../assets/logo_round.png')}
+              source={APP_LOGO}
               style={styles.logo}
               resizeMode="contain"
             />

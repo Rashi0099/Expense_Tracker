@@ -342,19 +342,7 @@ export const ExpensesListScreen: React.FC = () => {
               </Text>
             </View>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => {
-              setSelectedIncome(null);
-              setIsIncomeModalOpen(true);
-            }}
-            style={[styles.addIncomeButton, { backgroundColor: theme.colors.income }]}
-            accessibilityRole="button"
-            accessibilityLabel="Record new income"
-          >
-            <Text style={styles.addIncomeButtonText}>+ Add Income</Text>
-          </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       {/* Search Input */}
@@ -584,7 +572,7 @@ export const ExpensesListScreen: React.FC = () => {
                 description={
                   search
                     ? 'Try clearing your search keyword.'
-                    : 'Tap "+ Add Income" above to track salary, freelance, or investment returns.'
+                    : 'Tap "+" below to track salary, freelance, or investment returns.'
                 }
               />
             ) : null

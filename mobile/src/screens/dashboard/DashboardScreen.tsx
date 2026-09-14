@@ -28,6 +28,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
 import { formatDisplayDate, getCurrentMonthString } from '../../utils/date';
 import { DataEvents } from '../../database/sqlite/DataEvents';
+import { APP_LOGO } from '../../assets/appLogo';
 import { CashflowOverviewCard } from './components/CashflowOverviewCard';
 
 export const DashboardScreen: React.FC = () => {
@@ -148,7 +149,7 @@ export const DashboardScreen: React.FC = () => {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <Image
-            source={require('../../assets/logo_round.png')}
+            source={APP_LOGO}
             style={styles.headerLogo}
             resizeMode="contain"
           />

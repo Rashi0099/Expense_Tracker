@@ -149,27 +149,6 @@ export const SettingsScreen: React.FC = () => {
         </Text>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate('Income')}
-          style={styles.menuRow}
-          activeOpacity={0.7}
-        >
-          <View style={styles.menuLeft}>
-            <Text style={styles.menuIcon}>💼</Text>
-            <View>
-              <Text style={[styles.menuTitle, { color: theme.colors.textPrimary }]}>
-                Income Streams
-              </Text>
-              <Text style={[styles.menuSubtitle, { color: theme.colors.textMuted }]}>
-                Salary, freelance, investment revenue
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
-        </TouchableOpacity>
-
-        <View style={[styles.divider, { backgroundColor: theme.colors.surfaceBorder }]} />
-
-        <TouchableOpacity
           onPress={() => navigation.navigate('Categories')}
           style={styles.menuRow}
           activeOpacity={0.7}
