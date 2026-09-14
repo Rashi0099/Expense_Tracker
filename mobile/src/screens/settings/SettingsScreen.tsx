@@ -4,12 +4,10 @@ import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { SQLiteSyncOutboxRepository } from '../../database/repositories/SQLiteSyncOutboxRepository';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
 import { useSync } from '../../sync/hooks/useSync';
 import { ENV } from '../../app/config/env';
-import { DataEvents } from '../../database/sqlite/DataEvents';
 import { NotificationService, NotificationSettings } from '../../services/notificationService';
 import { useScreenPrivacy } from '../../components/common/ScreenPrivacyShield';
 import { hotUpdateService, UpdateCheckResult } from '../../services/HotUpdateService';
@@ -20,15 +18,7 @@ export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, isDark, toggleTheme } = useTheme();
   const { isPrivacyShieldEnabled, setPrivacyShieldEnabled } = useScreenPrivacy();
-  const {
-    state: syncState,
-    isSyncing,
-    isOffline,
-    pendingCount,
-    lastSyncedAt,
-    lastError,
-    syncNow,
-  } = useSync();
+  const { pendingCount } = useSync();
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
     recurringRemindersEnabled: true,
@@ -209,100 +199,7 @@ export const SettingsScreen: React.FC = () => {
         </View>
       </Card>
 
-      {/* Cloud Synchronization Card */}
-      <Card style={styles.card}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textMuted, marginBottom: 0 }]}>
-            Cloud Synchronization
-          </Text>
-          <Button
-            label={isSyncing ? 'Syncing...' : 'Sync Now'}
-            variant="primary"
-            size="sm"
-            disabled={isSyncing || isOffline}
-            onPress={syncNow}
-          />
-        </View>
 
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Status</Text>
-          <Text
-            style={[
-              styles.value,
-              {
-                color:
-                  syncState === 'SYNCED'
-                    ? theme.colors.income
-                    : syncState === 'OFFLINE'
-                    ? theme.colors.textMuted
-                    : syncState === 'ERROR'
-                    ? theme.colors.expense
-                    : theme.colors.warning,
-                fontWeight: '700',
-              },
-            ]}
-          >
-            {syncState === 'SYNCED'
-              ? '✓ Synced'
-              : syncState === 'SYNCING'
-              ? '🔄 Syncing...'
-              : syncState === 'OFFLINE'
-              ? '📡 Offline'
-              : syncState === 'PENDING_CHANGES'
-              ? '⬆️ Pending Changes'
-              : '⚠️ Error'}
-          </Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Pending Outbox</Text>
-          <Text
-            style={[
-              styles.value,
-              {
-                color: pendingCount > 0 ? theme.colors.warning : theme.colors.income,
-                fontWeight: '700',
-              },
-            ]}
-          >
-            {pendingCount} mutation{pendingCount !== 1 ? 's' : ''} queued
-          </Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Last Synced</Text>
-          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'Never'}
-          </Text>
-        </View>
-
-        {lastError && (
-          <View style={styles.errorRow}>
-            <Text style={[styles.errorText, { color: theme.colors.expense }]}>
-              {lastError}
-            </Text>
-          </View>
-        )}
-      </Card>
-
-      {/* Local SQLite Database Card */}
-      <Card style={styles.card}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-          Local SQLite Storage
-        </Text>
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Engine</Text>
-          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            SQLite (react-native-quick-sqlite)
-          </Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Platform</Text>
-          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {ENV.PLATFORM} (Base APK v{ENV.CLIENT_VERSION})
-          </Text>
-        </View>
-      </Card>
 
       {/* In-App Updates (OTA) Card */}
       <Card style={styles.card}>
@@ -478,13 +375,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  errorRow: {
-    paddingVertical: 6,
-  },
-  errorText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
