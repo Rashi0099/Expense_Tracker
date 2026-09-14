@@ -78,10 +78,13 @@ def send_otp_sms(phone_number: str, otp_code: str) -> dict:
         }
 
     payload = {
-        "route": "otp",
-        "variables_values": otp_code,
+        "route": "q",
+        "message": f"Your ExpenseFlow verification code is {otp_code}. Valid for 5 minutes.",
+        "language": "english",
+        "flash": 0,
         "numbers": ten_digit,
     }
+
 
     req_data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(

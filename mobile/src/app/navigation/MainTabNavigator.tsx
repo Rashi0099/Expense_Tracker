@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { MainTabParamList } from './types';
 import { DashboardScreen } from '../../screens/dashboard/DashboardScreen';
 import { ExpensesListScreen } from '../../screens/expenses/ExpensesListScreen';
@@ -11,37 +11,133 @@ import { useTheme } from '../../theme/useTheme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-export const MainTabNavigator: React.FC = () => {
+const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation, insets }) => {
   const { theme } = useTheme();
 
   return (
-    <Tab.Navigator
-      initialRouteName="Home"
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textMuted,
-        tabBarStyle: {
+    <View
+      style={[
+        styles.tabBar,
+        {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.surfaceBorder,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 10),
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
+      ]}
+    >
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+        const isAdd = route.name === 'QuickAdd';
+
+        const label =
+          options.tabBarLabel !== undefined
+            ? options.tabBarLabel
+            : options.title !== undefined
+            ? options.title
+            : route.name;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        const onLongPress = () => {
+          navigation.emit({
+            type: 'tabLongPress',
+            target: route.key,
+          });
+        };
+
+        if (isAdd) {
+          return (
+            <TouchableOpacity
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={typeof label === 'string' ? label : 'Add Expense'}
+              testID={options.tabBarTestID}
+              onPress={onPress}
+              onLongPress={onLongPress}
+              style={styles.tabButton}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.addPill,
+                  {
+                    backgroundColor: theme.colors.primary,
+                    shadowColor: theme.colors.primary,
+                  },
+                ]}
+              >
+                <Text style={styles.addPillText}>+ Add</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            accessibilityRole="button"
+            accessibilityState={isFocused ? { selected: true } : {}}
+            accessibilityLabel={typeof label === 'string' ? label : route.name}
+            testID={options.tabBarTestID}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            style={styles.tabButton}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.pill,
+                isFocused && {
+                  backgroundColor: theme.colors.primaryLight,
+                },
+              ]}
+            >
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.label,
+                  {
+                    color: isFocused ? theme.colors.primary : theme.colors.textMuted,
+                    fontWeight: isFocused ? '700' : '600',
+                  },
+                ]}
+              >
+                {typeof label === 'string' ? label : route.name}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
+
+export const MainTabNavigator: React.FC = () => {
+  return (
+    <Tab.Navigator
+      initialRouteName="Home"
+      tabBar={(props) => <CleanTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
       }}
     >
       <Tab.Screen
         name="Home"
         component={DashboardScreen}
         options={{
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: focused ? 20 : 18 }}>🏠</Text>
-          ),
+          tabBarLabel: 'Overview',
         }}
       />
 
@@ -50,9 +146,6 @@ export const MainTabNavigator: React.FC = () => {
         component={ExpensesListScreen}
         options={{
           tabBarLabel: 'Expenses',
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: focused ? 20 : 18 }}>💳</Text>
-          ),
         }}
       />
 
@@ -60,20 +153,7 @@ export const MainTabNavigator: React.FC = () => {
         name="QuickAdd"
         component={QuickExpenseScreen}
         options={{
-          tabBarLabel: 'Add',
-          tabBarIcon: () => (
-            <View
-              style={[
-                styles.addFab,
-                {
-                  backgroundColor: theme.colors.primary,
-                  shadowColor: theme.colors.primary,
-                },
-              ]}
-            >
-              <Text style={styles.addFabText}>+</Text>
-            </View>
-          ),
+          tabBarLabel: '+ Add',
         }}
       />
 
@@ -82,9 +162,6 @@ export const MainTabNavigator: React.FC = () => {
         component={BudgetsScreen}
         options={{
           tabBarLabel: 'Budgets',
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: focused ? 20 : 18 }}>🎯</Text>
-          ),
         }}
       />
 
@@ -92,10 +169,7 @@ export const MainTabNavigator: React.FC = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'More',
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: focused ? 20 : 18 }}>⚙️</Text>
-          ),
+          tabBarLabel: 'Settings',
         }}
       />
     </Tab.Navigator>
@@ -103,22 +177,52 @@ export const MainTabNavigator: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  addFab: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingTop: 8,
+    paddingHorizontal: 8,
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
+  tabButton: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    paddingVertical: 4,
   },
-  addFabText: {
+  pill: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 54,
+  },
+  label: {
+    fontSize: 12.5,
+    letterSpacing: -0.2,
+  },
+  addPill: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  addPillText: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 13,
     fontWeight: '700',
-    lineHeight: 28,
+    letterSpacing: -0.2,
   },
 });

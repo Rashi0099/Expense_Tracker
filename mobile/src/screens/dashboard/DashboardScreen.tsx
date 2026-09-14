@@ -129,7 +129,7 @@ export const DashboardScreen: React.FC = () => {
             Welcome back
           </Text>
           <Text style={[styles.email, { color: theme.colors.textPrimary }]}>
-            {user?.email || 'Guest User'}
+            {user?.phoneNumber || user?.email || 'Member'}
           </Text>
         </View>
         <View style={styles.headerActions}>
@@ -283,11 +283,15 @@ export const DashboardScreen: React.FC = () => {
             onPress={() => navigation.navigate('Budgets')}
           >
             <Card style={styles.emptyBudgetCard}>
-              <Text style={styles.emptyBudgetIcon}>🎯</Text>
               <View style={styles.emptyBudgetTexts}>
-                <Text style={[styles.emptyBudgetTitle, { color: theme.colors.textPrimary }]}>
-                  No monthly budget set
-                </Text>
+                <View style={styles.emptyBudgetHeader}>
+                  <Text style={[styles.emptyBudgetTitle, { color: theme.colors.textPrimary }]}>
+                    No monthly budget set
+                  </Text>
+                  <View style={[styles.emptyBudgetBadge, { backgroundColor: theme.colors.primaryLight }]}>
+                    <Text style={[styles.emptyBudgetBadgeText, { color: theme.colors.primary }]}>Setup</Text>
+                  </View>
+                </View>
                 <Text style={[styles.emptyBudgetSubtitle, { color: theme.colors.textMuted }]}>
                   Set a monthly spending limit to track allowances & alerts.
                 </Text>
@@ -503,24 +507,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   emptyBudgetCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    gap: 12,
-  },
-  emptyBudgetIcon: {
-    fontSize: 24,
   },
   emptyBudgetTexts: {
     flex: 1,
+  },
+  emptyBudgetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   emptyBudgetTitle: {
     fontSize: 14,
     fontWeight: '700',
   },
+  emptyBudgetBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  emptyBudgetBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   emptyBudgetSubtitle: {
     fontSize: 12,
-    marginTop: 2,
   },
   breakdownCard: {
     padding: 16,

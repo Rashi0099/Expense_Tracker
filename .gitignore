@@ -55,6 +55,7 @@ coverage/
 .ota_build/
 mobile/.ota_build/
 mobile/android/app/build/
+mobile/android/app/src/main/assets/
 mobile/android/.gradle/
 mobile/android/local.properties
 mobile/ios/Pods/

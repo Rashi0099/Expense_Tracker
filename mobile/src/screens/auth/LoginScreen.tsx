@@ -95,7 +95,7 @@ export const LoginScreen: React.FC<Props> = () => {
             { color: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
           ]}
         >
-          📱 Fast Mobile Sign-In
+          Fast Mobile Sign-In
         </Text>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
           {otpStep === 'PHONE_INPUT' ? 'Welcome to ExpenseFlow' : 'Verify Your Number'}

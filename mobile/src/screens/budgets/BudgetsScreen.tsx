@@ -181,7 +181,6 @@ export const BudgetsScreen: React.FC = () => {
 
       {!hasBudgets ? (
         <EmptyState
-          icon="🎯"
           title="No Budgets Set"
           description="Set monthly spending limits for categories or overall expenses to stay on track offline."
         />
@@ -216,10 +215,10 @@ export const BudgetsScreen: React.FC = () => {
                       ]}
                     >
                       {calculateBudgetStatus(overview.overallBudget.percentageUsed) === 'OVER_BUDGET'
-                        ? '🚨 OVER BUDGET'
+                        ? 'OVER BUDGET'
                         : calculateBudgetStatus(overview.overallBudget.percentageUsed) === 'NEAR_LIMIT'
-                        ? '⚠️ NEAR LIMIT'
-                        : '✓ ON TRACK'}
+                        ? 'NEAR LIMIT'
+                        : 'ON TRACK'}
                     </Text>
                   </View>
                   <Text style={[styles.percent, { color: theme.colors.primary }]}>
@@ -291,10 +290,10 @@ export const BudgetsScreen: React.FC = () => {
                           ]}
                         >
                           {status === 'OVER_BUDGET'
-                            ? '🚨 Over Budget'
+                            ? 'Over Budget'
                             : status === 'NEAR_LIMIT'
-                            ? '⚠️ Near Limit'
-                            : '✓ On Track'}
+                            ? 'Near Limit'
+                            : 'On Track'}
                         </Text>
                       </View>
                     </View>

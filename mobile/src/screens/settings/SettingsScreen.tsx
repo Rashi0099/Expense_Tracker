@@ -194,9 +194,11 @@ export const SettingsScreen: React.FC = () => {
           Account Details
         </Text>
         <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Email</Text>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
+            {user?.phoneNumber ? 'Phone Number' : 'Email'}
+          </Text>
           <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {user?.email || 'N/A'}
+            {user?.phoneNumber || user?.email || 'N/A'}
           </Text>
         </View>
         <View style={styles.row}>

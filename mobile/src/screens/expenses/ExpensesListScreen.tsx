@@ -229,7 +229,7 @@ export const ExpensesListScreen: React.FC = () => {
               { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
             ]}
           >
-            🔍 Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
+            Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
           </Text>
         </TouchableOpacity>
       </View>

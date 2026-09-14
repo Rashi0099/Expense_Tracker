@@ -4,7 +4,7 @@ import { useTheme } from '../../theme/useTheme';
 import { Button } from './Button';
 
 export interface EmptyStateProps {
-  icon?: string;
+  icon?: string | null;
   title: string;
   description: string;
   actionLabel?: string;
@@ -12,7 +12,7 @@ export interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon = '📦',
+  icon,
   title,
   description,
   actionLabel,
@@ -22,7 +22,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
+      {icon ? (
+        <Text style={styles.icon}>{icon}</Text>
+      ) : (
+        <View style={[styles.cleanBar, { backgroundColor: theme.colors.surfaceBorder }]} />
+      )}
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
         {title}
       </Text>
@@ -51,6 +55,12 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 48,
+    marginBottom: 16,
+  },
+  cleanBar: {
+    width: 32,
+    height: 4,
+    borderRadius: 2,
     marginBottom: 16,
   },
   title: {
