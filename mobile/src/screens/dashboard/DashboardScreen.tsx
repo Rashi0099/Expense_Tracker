@@ -121,9 +121,10 @@ export const DashboardScreen: React.FC = () => {
       <OfflineBanner isOffline={isOffline} pendingCount={summary.pendingSyncCount} />
       <SyncErrorBanner />
 
-
-
-      {/* Primary Hero KPI: Net Cashflow Balance */}
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Overview</Text>
+      </View>
       <Card style={styles.balanceCard}>
         <Text style={[styles.balanceLabel, { color: theme.colors.textMuted }]}>
           Net Cashflow Balance
@@ -374,6 +375,14 @@ export const DashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
+  },
+  header: {
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
   },
 
   balanceCard: {
