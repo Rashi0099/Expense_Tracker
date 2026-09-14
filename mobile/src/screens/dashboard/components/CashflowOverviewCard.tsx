@@ -11,6 +11,7 @@ import {
 } from '../../../domain/usecases/dashboardUseCases';
 import { formatCurrencyFromCents } from '../../../utils/money';
 import { DataEvents } from '../../../database/sqlite/DataEvents';
+import { useTheme } from '../../../theme/useTheme';
 
 export type DashboardFilter = 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_3_MONTHS' | 'THIS_YEAR' | 'ALL_TIME';
 
@@ -85,6 +86,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
   onFilterChange,
   refreshTrigger = 0,
 }) => {
+  const { isDark } = useTheme();
   const [selectedFilter, setSelectedFilter] = useState<DashboardFilter>('THIS_MONTH');
   const [showDropdown, setShowDropdown] = useState(false);
   const [metrics, setMetrics] = useState<CashflowMetrics>({
@@ -129,30 +131,77 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
   };
 
   return (
-    <View style={styles.cashflowCard}>
+    <View
+      style={[
+        styles.cashflowCard,
+        {
+          backgroundColor: isDark ? '#121626' : '#FFFFFF',
+          borderColor: isDark ? '#232A42' : '#E2E8F0',
+          shadowOpacity: isDark ? 0.25 : 0.06,
+        },
+      ]}
+    >
       {/* Top Header Row */}
       <View style={styles.cardHeaderRow}>
         {/* Left: Wallet Icon Badge + Balance Texts */}
         <View style={styles.walletAndInfo}>
-          <View style={styles.walletBadge}>
-            <View style={styles.walletOuter}>
-              <View style={styles.walletFlap}>
-                <View style={styles.walletClaspDot} />
+          <View
+            style={[
+              styles.walletBadge,
+              { backgroundColor: isDark ? '#384370' : '#EEF2FF' },
+            ]}
+          >
+            <View
+              style={[
+                styles.walletOuter,
+                { borderColor: isDark ? '#FFFFFF' : '#4F46E5' },
+              ]}
+            >
+              <View
+                style={[
+                  styles.walletFlap,
+                  {
+                    borderColor: isDark ? '#FFFFFF' : '#4F46E5',
+                    backgroundColor: isDark ? '#384370' : '#EEF2FF',
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.walletClaspDot,
+                    { backgroundColor: isDark ? '#FFFFFF' : '#4F46E5' },
+                  ]}
+                />
               </View>
             </View>
           </View>
 
           <View style={styles.balanceTexts}>
-            <Text style={styles.balanceTag}>NET CASHFLOW BALANCE</Text>
             <Text
-              style={styles.balanceBigNumber}
+              style={[
+                styles.balanceTag,
+                { color: isDark ? '#8F9BB3' : '#64748B' },
+              ]}
+            >
+              NET CASHFLOW BALANCE
+            </Text>
+            <Text
+              style={[
+                styles.balanceBigNumber,
+                { color: isDark ? '#FFFFFF' : '#0F172A' },
+              ]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.7}
             >
               {formatCurrencyFromCents(metrics.netBalanceCents, currency)}
             </Text>
-            <Text style={styles.balanceSubNotice}>
+            <Text
+              style={[
+                styles.balanceSubNotice,
+                { color: isDark ? '#8F9BB3' : '#64748B' },
+              ]}
+            >
               {metrics.netBalanceCents < 0
                 ? "You've spent more than earned"
                 : metrics.netBalanceCents > 0
@@ -167,12 +216,33 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setShowDropdown((prev) => !prev)}
-            style={styles.filterPill}
+            style={[
+              styles.filterPill,
+              {
+                backgroundColor: isDark ? '#20273F' : '#F1F5F9',
+                borderColor: isDark ? '#2D385A' : '#E2E8F0',
+                borderWidth: isDark ? 0 : 1,
+              },
+            ]}
             accessibilityRole="button"
             accessibilityLabel={`Filter: ${FILTER_LABELS[selectedFilter]}`}
           >
-            <Text style={styles.filterPillText}>{FILTER_LABELS[selectedFilter]}</Text>
-            <Text style={styles.filterPillChevron}>{showDropdown ? '▴' : '▾'}</Text>
+            <Text
+              style={[
+                styles.filterPillText,
+                { color: isDark ? '#FFFFFF' : '#0F172A' },
+              ]}
+            >
+              {FILTER_LABELS[selectedFilter]}
+            </Text>
+            <Text
+              style={[
+                styles.filterPillChevron,
+                { color: isDark ? '#8F9BB3' : '#64748B' },
+              ]}
+            >
+              {showDropdown ? '▴' : '▾'}
+            </Text>
           </TouchableOpacity>
 
           {/* Fast Floating Dropdown Menu */}
@@ -183,7 +253,16 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                 activeOpacity={1}
                 onPress={() => setShowDropdown(false)}
               />
-              <View style={styles.dropdownMenu}>
+              <View
+                style={[
+                  styles.dropdownMenu,
+                  {
+                    backgroundColor: isDark ? '#1B2138' : '#FFFFFF',
+                    borderColor: isDark ? '#2D385A' : '#E2E8F0',
+                    shadowOpacity: isDark ? 0.45 : 0.12,
+                  },
+                ]}
+              >
                 {FILTER_OPTIONS.map((opt) => {
                   const isSelected = opt.value === selectedFilter;
                   return (
@@ -193,15 +272,19 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                       activeOpacity={0.7}
                       style={[
                         styles.dropdownItem,
-                        isSelected && styles.dropdownItemSelected,
+                        isSelected && {
+                          backgroundColor: isDark
+                            ? 'rgba(99, 102, 241, 0.22)'
+                            : 'rgba(99, 102, 241, 0.12)',
+                        },
                       ]}
                     >
                       <Text
                         style={[
                           styles.dropdownItemText,
                           isSelected
-                            ? styles.dropdownItemTextSelected
-                            : styles.dropdownItemTextNormal,
+                            ? { color: isDark ? '#FFFFFF' : '#4F46E5', fontWeight: '700' }
+                            : { color: isDark ? '#C5CEE0' : '#475569', fontWeight: '500' },
                         ]}
                       >
                         {opt.label}
@@ -219,7 +302,12 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
       </View>
 
       {/* Divider Line */}
-      <View style={styles.cardDivider} />
+      <View
+        style={[
+          styles.cardDivider,
+          { backgroundColor: isDark ? '#232A42' : '#E2E8F0' },
+        ]}
+      />
 
       {/* Bottom Metrics Row */}
       <View style={styles.cardMetricsRow}>
@@ -235,7 +323,14 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
             <Text style={styles.incomeArrowText}>↑</Text>
           </View>
           <View style={styles.metricTextsColumn}>
-            <Text style={styles.metricLabelText}>Total Income</Text>
+            <Text
+              style={[
+                styles.metricLabelText,
+                { color: isDark ? '#8F9BB3' : '#64748B' },
+              ]}
+            >
+              Total Income
+            </Text>
             <Text style={styles.incomeValueText}>
               {formatCurrencyFromCents(metrics.totalIncomeCents, currency)}
             </Text>
@@ -243,7 +338,12 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
         </TouchableOpacity>
 
         {/* Vertical Divider */}
-        <View style={styles.metricVerticalDivider} />
+        <View
+          style={[
+            styles.metricVerticalDivider,
+            { backgroundColor: isDark ? '#232A42' : '#E2E8F0' },
+          ]}
+        />
 
         {/* Total Expenses Item */}
         <TouchableOpacity
@@ -257,7 +357,14 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
             <Text style={styles.expenseArrowText}>↓</Text>
           </View>
           <View style={styles.metricTextsColumn}>
-            <Text style={styles.metricLabelText}>Total Expenses</Text>
+            <Text
+              style={[
+                styles.metricLabelText,
+                { color: isDark ? '#8F9BB3' : '#64748B' },
+              ]}
+            >
+              Total Expenses
+            </Text>
             <Text style={styles.expenseValueText}>
               {formatCurrencyFromCents(metrics.totalExpensesCents, currency)}
             </Text>
@@ -272,15 +379,12 @@ CashflowOverviewCard.displayName = 'CashflowOverviewCard';
 
 const styles = StyleSheet.create({
   cashflowCard: {
-    backgroundColor: '#121626',
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#232A42',
     padding: 18,
     marginBottom: 20,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 4,
     overflow: 'visible',
@@ -301,7 +405,6 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: '#384370',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -312,7 +415,6 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 5,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'flex-end',
     paddingRight: 2,
@@ -323,9 +425,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 4,
     borderBottomLeftRadius: 4,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
     borderRightWidth: 0,
-    backgroundColor: '#384370',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -333,7 +433,6 @@ const styles = StyleSheet.create({
     width: 2.5,
     height: 2.5,
     borderRadius: 1.5,
-    backgroundColor: '#FFFFFF',
   },
   balanceTexts: {
     flex: 1,
@@ -341,19 +440,16 @@ const styles = StyleSheet.create({
   balanceTag: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8F9BB3',
     letterSpacing: 0.6,
   },
   balanceBigNumber: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#FFFFFF',
     marginTop: 2,
     marginBottom: 2,
   },
   balanceSubNotice: {
     fontSize: 12,
-    color: '#8F9BB3',
     fontWeight: '500',
   },
   filterPillWrapper: {
@@ -363,7 +459,6 @@ const styles = StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#20273F',
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -372,11 +467,9 @@ const styles = StyleSheet.create({
   filterPillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   filterPillChevron: {
     fontSize: 10,
-    color: '#8F9BB3',
     fontWeight: '700',
   },
   dropdownBackdrop: {
@@ -392,16 +485,13 @@ const styles = StyleSheet.create({
     top: 34,
     right: 0,
     width: 125,
-    backgroundColor: '#1B2138',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2D385A',
     paddingVertical: 4,
     paddingHorizontal: 4,
     zIndex: 999,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
     shadowRadius: 10,
     elevation: 12,
   },
@@ -414,19 +504,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 1,
   },
-  dropdownItemSelected: {
-    backgroundColor: 'rgba(99, 102, 241, 0.22)',
-  },
   dropdownItemText: {
     fontSize: 12,
-  },
-  dropdownItemTextNormal: {
-    color: '#C5CEE0',
-    fontWeight: '500',
-  },
-  dropdownItemTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   dropdownItemCheck: {
     fontSize: 11,
@@ -435,7 +514,6 @@ const styles = StyleSheet.create({
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#232A42',
     marginTop: 18,
     marginBottom: 16,
   },
@@ -485,7 +563,6 @@ const styles = StyleSheet.create({
   metricLabelText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#8F9BB3',
     marginBottom: 2,
   },
   incomeValueText: {
@@ -501,6 +578,5 @@ const styles = StyleSheet.create({
   metricVerticalDivider: {
     width: 1,
     height: 36,
-    backgroundColor: '#232A42',
   },
 });

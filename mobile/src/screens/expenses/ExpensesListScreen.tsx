@@ -42,7 +42,7 @@ export type TransactionTab = 'INCOME' | 'EXPENSE';
 const PAGE_SIZE = 25;
 
 export const ExpensesListScreen: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { syncNow } = useSync();
   const { isOffline } = useNetworkState();
   const route = useRoute<any>();
@@ -371,13 +371,27 @@ export const ExpensesListScreen: React.FC = () => {
       />
 
       {/* Segmented Filter Control: [ Income | Expense ] */}
-      <View style={styles.segmentContainer}>
+      <View
+        style={[
+          styles.segmentContainer,
+          {
+            backgroundColor: isDark ? '#161B2E' : '#F1F5F9',
+            borderColor: isDark ? '#232A42' : '#E2E8F0',
+          },
+        ]}
+      >
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setSelectedTab('INCOME')}
           style={[
             styles.segmentTab,
-            selectedTab === 'INCOME' && styles.segmentTabActive,
+            selectedTab === 'INCOME' && [
+              styles.segmentTabActive,
+              {
+                backgroundColor: isDark ? '#283256' : '#FFFFFF',
+                shadowOpacity: isDark ? 0.25 : 0.08,
+              },
+            ],
           ]}
           accessibilityRole="button"
           accessibilityLabel="Filter by Income"
@@ -385,7 +399,11 @@ export const ExpensesListScreen: React.FC = () => {
           <Text
             style={[
               styles.segmentText,
-              selectedTab === 'INCOME' && styles.segmentTextActive,
+              { color: isDark ? '#8F9BB3' : '#64748B' },
+              selectedTab === 'INCOME' && [
+                styles.segmentTextActive,
+                { color: isDark ? '#FFFFFF' : '#0F172A' },
+              ],
             ]}
           >
             Income
@@ -397,7 +415,13 @@ export const ExpensesListScreen: React.FC = () => {
           onPress={() => setSelectedTab('EXPENSE')}
           style={[
             styles.segmentTab,
-            selectedTab === 'EXPENSE' && styles.segmentTabActive,
+            selectedTab === 'EXPENSE' && [
+              styles.segmentTabActive,
+              {
+                backgroundColor: isDark ? '#283256' : '#FFFFFF',
+                shadowOpacity: isDark ? 0.25 : 0.08,
+              },
+            ],
           ]}
           accessibilityRole="button"
           accessibilityLabel="Filter by Expense"
@@ -405,7 +429,11 @@ export const ExpensesListScreen: React.FC = () => {
           <Text
             style={[
               styles.segmentText,
-              selectedTab === 'EXPENSE' && styles.segmentTextActive,
+              { color: isDark ? '#8F9BB3' : '#64748B' },
+              selectedTab === 'EXPENSE' && [
+                styles.segmentTextActive,
+                { color: isDark ? '#FFFFFF' : '#0F172A' },
+              ],
             ]}
           >
             Expense
@@ -801,12 +829,10 @@ const styles = StyleSheet.create({
   },
   segmentContainer: {
     flexDirection: 'row',
-    backgroundColor: '#161B2E',
     borderRadius: 14,
     padding: 4,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#232A42',
   },
   segmentTab: {
     flex: 1,
@@ -816,20 +842,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   segmentTabActive: {
-    backgroundColor: '#283256',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowRadius: 3,
     elevation: 2,
   },
   segmentText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8F9BB3',
   },
   segmentTextActive: {
-    color: '#FFFFFF',
     fontWeight: '700',
   },
   searchInput: {
