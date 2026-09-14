@@ -160,10 +160,10 @@ export const BudgetsScreen: React.FC = () => {
     <Screen scrollable contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Monthly Budgets</Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-            Period: {currentMonth} • Calculated from local expenses
+          <Text style={[styles.subtitle, { color: theme.colors.textMuted }]} numberOfLines={1}>
+            {currentMonth} • Spending Limits
           </Text>
         </View>
         <TouchableOpacity
@@ -174,6 +174,9 @@ export const BudgetsScreen: React.FC = () => {
             setIsAddModalOpen(true);
           }}
           style={[styles.setBudgetBtn, { backgroundColor: theme.colors.primary }]}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Set new budget"
         >
           <Text style={styles.setBudgetBtnText}>+ Set Budget</Text>
         </TouchableOpacity>
@@ -472,14 +475,20 @@ export const BudgetsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
-    paddingTop: 8,
+    paddingTop: 4,
+  },
+  headerLeft: {
+    flex: 1,
+    marginRight: 12,
   },
   title: {
     fontSize: 22,
@@ -491,8 +500,11 @@ const styles = StyleSheet.create({
   },
   setBudgetBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   setBudgetBtnText: {
     color: '#FFFFFF',
