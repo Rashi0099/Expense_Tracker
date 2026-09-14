@@ -205,7 +205,7 @@ export const ExpensesListScreen: React.FC = () => {
       {/* Screen Header */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Expenses</Text>
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Transactions</Text>
           <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
             {expenses.length} transaction{expenses.length !== 1 ? 's' : ''} stored offline in SQLite
           </Text>

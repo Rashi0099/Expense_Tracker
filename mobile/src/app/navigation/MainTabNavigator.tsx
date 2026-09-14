@@ -102,7 +102,7 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
                   },
                 ]}
               >
-                <IconAdd color="#FFFFFF" size={16} />
+                <IconAdd color="#FFFFFF" size={20} />
               </View>
               <Text
                 style={[
@@ -174,7 +174,7 @@ export const MainTabNavigator: React.FC = () => {
         name="Expenses"
         component={ExpensesListScreen}
         options={{
-          tabBarLabel: 'Expenses',
+          tabBarLabel: 'Transactions',
         }}
       />
 
@@ -211,22 +211,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingHorizontal: 8,
-    elevation: 4,
+    elevation: 6,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   iconContainer: {
-    height: 22,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
@@ -236,15 +236,15 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   addFab: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
-    elevation: 2,
+    marginBottom: 3,
+    elevation: 3,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });

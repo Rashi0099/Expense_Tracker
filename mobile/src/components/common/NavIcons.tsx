@@ -8,60 +8,48 @@ interface IconProps {
 }
 
 /**
- * Modern 4-Tile Dashboard / Overview Icon (Linear / Notion / Apple style)
- * Strictly monochrome, no emojis.
+ * Modern House / Home Overview Icon matching reference UX
  */
 export const IconOverview: React.FC<IconProps> = ({
   color,
   size = 20,
   focused = false,
 }) => {
-  const tileSize = Math.round(size * 0.36);
-  const gap = Math.round(size * 0.14);
-
   return (
     <View style={[styles.center, { width: size, height: size }]}>
-      <View style={{ flexDirection: 'row', gap }}>
+      {/* Roof */}
+      <View
+        style={{
+          width: 0,
+          height: 0,
+          borderLeftWidth: Math.round(size * 0.44),
+          borderRightWidth: Math.round(size * 0.44),
+          borderBottomWidth: Math.round(size * 0.38),
+          borderLeftColor: 'transparent',
+          borderRightColor: 'transparent',
+          borderBottomColor: color,
+        }}
+      />
+      {/* House Body */}
+      <View
+        style={{
+          width: Math.round(size * 0.62),
+          height: Math.round(size * 0.44),
+          backgroundColor: color,
+          borderBottomLeftRadius: 3,
+          borderBottomRightRadius: 3,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+        }}
+      >
+        {/* Door Cutout */}
         <View
           style={{
-            width: tileSize,
-            height: tileSize,
-            borderRadius: 2,
-            borderWidth: focused ? 0 : 1.6,
-            borderColor: color,
-            backgroundColor: focused ? color : 'transparent',
-          }}
-        />
-        <View
-          style={{
-            width: tileSize,
-            height: tileSize,
-            borderRadius: 2,
-            borderWidth: focused ? 0 : 1.6,
-            borderColor: color,
-            backgroundColor: focused ? color : 'transparent',
-          }}
-        />
-      </View>
-      <View style={{ flexDirection: 'row', gap, marginTop: gap }}>
-        <View
-          style={{
-            width: tileSize,
-            height: tileSize,
-            borderRadius: 2,
-            borderWidth: focused ? 0 : 1.6,
-            borderColor: color,
-            backgroundColor: focused ? color : 'transparent',
-          }}
-        />
-        <View
-          style={{
-            width: tileSize,
-            height: tileSize,
-            borderRadius: 2,
-            borderWidth: focused ? 0 : 1.6,
-            borderColor: color,
-            backgroundColor: focused ? color : 'transparent',
+            width: Math.round(size * 0.22),
+            height: Math.round(size * 0.24),
+            borderTopLeftRadius: 3,
+            borderTopRightRadius: 3,
+            backgroundColor: '#0F1322',
           }}
         />
       </View>
@@ -208,55 +196,70 @@ export const IconBudgets: React.FC<IconProps> = ({
 };
 
 /**
- * Modern iOS/macOS Preferences Sliders Icon
- * Strictly monochrome, no emojis.
+ * Modern Gear / Settings Icon matching reference UX
  */
 export const IconSettings: React.FC<IconProps> = ({
   color,
   size = 20,
   focused = false,
 }) => {
+  const outerR = Math.round(size * 0.4);
+  const barW = Math.round(size * 0.88);
+  const barH = Math.round(size * 0.3);
+  const innerR = Math.round(size * 0.16);
+
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        justifyContent: 'center',
-        gap: 4.5,
-      }}
-    >
-      {/* Track 1 with knob at 25% */}
-      <View style={{ height: 6, justifyContent: 'center' }}>
-        <View style={{ height: 1.6, width: '100%', backgroundColor: color, borderRadius: 1 }} />
-        <View
-          style={{
-            position: 'absolute',
-            left: 2.5,
-            width: 5.5,
-            height: 5.5,
-            borderRadius: 2,
-            backgroundColor: focused ? color : '#FFFFFF',
-            borderWidth: 1.6,
-            borderColor: color,
-          }}
-        />
-      </View>
-      {/* Track 2 with knob at 75% */}
-      <View style={{ height: 6, justifyContent: 'center' }}>
-        <View style={{ height: 1.6, width: '100%', backgroundColor: color, borderRadius: 1 }} />
-        <View
-          style={{
-            position: 'absolute',
-            right: 2.5,
-            width: 5.5,
-            height: 5.5,
-            borderRadius: 2,
-            backgroundColor: focused ? color : '#FFFFFF',
-            borderWidth: 1.6,
-            borderColor: color,
-          }}
-        />
-      </View>
+    <View style={[styles.center, { width: size, height: size }]}>
+      {/* 3 crossing bars for 6 teeth */}
+      <View
+        style={{
+          position: 'absolute',
+          width: barW,
+          height: barH,
+          borderRadius: 2.5,
+          backgroundColor: color,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          width: barW,
+          height: barH,
+          borderRadius: 2.5,
+          backgroundColor: color,
+          transform: [{ rotate: '60deg' }],
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          width: barW,
+          height: barH,
+          borderRadius: 2.5,
+          backgroundColor: color,
+          transform: [{ rotate: '120deg' }],
+        }}
+      />
+      {/* Central circular hub */}
+      <View
+        style={{
+          position: 'absolute',
+          width: outerR * 2,
+          height: outerR * 2,
+          borderRadius: outerR,
+          backgroundColor: color,
+        }}
+      />
+      {/* Central hole cutout */}
+      <View
+        style={{
+          position: 'absolute',
+          width: innerR * 2,
+          height: innerR * 2,
+          borderRadius: innerR,
+          backgroundColor: '#0F1322',
+        }}
+      />
     </View>
   );
 };
