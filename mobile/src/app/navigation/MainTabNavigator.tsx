@@ -162,9 +162,8 @@ export const MainTabNavigator: React.FC = () => {
       tabBar={(props) => <CleanTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        lazy: false,
+        lazy: true,
         unmountOnBlur: false,
-        freezeOnBlur: false,
       }}
     >
       <Tab.Screen

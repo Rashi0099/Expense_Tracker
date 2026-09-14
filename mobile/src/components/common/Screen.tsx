@@ -50,7 +50,6 @@ export const Screen: React.FC<ScreenProps> = ({
               contentContainerStyle,
             ]}
             keyboardShouldPersistTaps="handled"
-            delaysContentTouches={false}
             showsVerticalScrollIndicator={false}
             refreshControl={refreshControl}
           >

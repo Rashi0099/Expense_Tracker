@@ -15,6 +15,7 @@ import { HotUpdateModal } from '../../components/common/HotUpdateModal';
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
+  const { theme, isDark, toggleTheme } = useTheme();
   const {
     state: syncState,
     isSyncing,
