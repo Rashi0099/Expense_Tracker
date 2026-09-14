@@ -236,72 +236,56 @@ export const DashboardScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.horizontalCategoryScrollWrapper}>
-          {(summary.categorySpending.length > 0
-            ? summary.categorySpending
-            : [
-                { categoryId: '1', categoryName: 'Food', categoryIcon: '🍴', categoryColor: '#D97706', totalCents: 245000, percentage: 45 },
-                { categoryId: '2', categoryName: 'Transport', categoryIcon: '🚗', categoryColor: '#4F46E5', totalCents: 120000, percentage: 28 },
-                { categoryId: '3', categoryName: 'Shopping', categoryIcon: '🛍️', categoryColor: '#DB2777', totalCents: 95000, percentage: 18 },
-                { categoryId: '4', categoryName: 'Home', categoryIcon: '🏠', categoryColor: '#059669', totalCents: 92000, percentage: 12 },
-              ]
-          ).map((cat) => (
-            <View
-              key={cat.categoryId}
-              style={[
-                styles.categoryCard,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.surfaceBorder,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.categoryIconBox,
-                  {
-                    backgroundColor:
-                      cat.categoryColor === '#D97706' || cat.categoryName === 'Food'
-                        ? '#FEF3C7'
-                        : cat.categoryColor === '#4F46E5' || cat.categoryName === 'Transport'
-                        ? '#E0E7FF'
-                        : cat.categoryColor === '#DB2777' || cat.categoryName === 'Shopping'
-                        ? '#FCE7F3'
-                        : '#D1FAE5',
-                  },
-                ]}
-              >
-                <Text style={styles.categoryCardEmoji}>{cat.categoryIcon}</Text>
-              </View>
-              <Text
-                style={[styles.categoryCardName, { color: theme.colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {cat.categoryName}
-              </Text>
-              <Text
-                style={[styles.categoryCardAmount, { color: theme.colors.textPrimary }]}
-                numberOfLines={1}
-              >
-                <CurrencyText amountCents={cat.totalCents} currency={currency} />
-              </Text>
-              <View style={[styles.miniBarBg, { backgroundColor: theme.colors.surfaceSubtle }]}>
+        {summary.categorySpending.length === 0 ? (
+          <View style={[styles.categoryEmptyBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.surfaceBorder }]}>
+            <Text style={[styles.categoryEmptyText, { color: theme.colors.textMuted }]}>
+              No spending data yet. Add expenses to see category overview.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.horizontalCategoryScrollWrapper}>
+            {summary.categorySpending.map((cat, idx) => {
+              const pastelBgs = ['#FEF3C7', '#E0E7FF', '#FCE7F3', '#D1FAE5', '#E0F2FE', '#FEE2E2', '#EDE9FE', '#F3F4F6'];
+              const tileBg = pastelBgs[idx % pastelBgs.length];
+              return (
                 <View
+                  key={cat.categoryId}
                   style={[
-                    styles.miniBarFill,
+                    styles.categoryCard,
                     {
-                      width: `${Math.min(cat.percentage, 100)}%`,
-                      backgroundColor: cat.categoryColor || theme.colors.warning,
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.surfaceBorder,
                     },
                   ]}
-                />
-              </View>
-              <Text style={[styles.miniBarPercent, { color: theme.colors.textMuted }]}>
-                {cat.percentage}%
-              </Text>
-            </View>
-          ))}
-        </View>
+                >
+                  <View style={[styles.categoryIconBox, { backgroundColor: tileBg }]}>
+                    <Text style={styles.categoryCardEmoji}>{cat.categoryIcon}</Text>
+                  </View>
+                  <Text style={[styles.categoryCardName, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                    {cat.categoryName}
+                  </Text>
+                  <Text style={[styles.categoryCardAmount, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                    <CurrencyText amountCents={cat.totalCents} currency={currency} />
+                  </Text>
+                  <View style={[styles.miniBarBg, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                    <View
+                      style={[
+                        styles.miniBarFill,
+                        {
+                          width: `${Math.min(cat.percentage, 100)}%`,
+                          backgroundColor: cat.categoryColor || theme.colors.warning,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.miniBarPercent, { color: theme.colors.textMuted }]}>
+                    {cat.percentage}%
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       {/* Recent Transactions Section matching uiii.png */}
@@ -528,6 +512,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     marginTop: 3,
+  },
+  categoryEmptyBox: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryEmptyText: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   emptyCard: {
     padding: 24,

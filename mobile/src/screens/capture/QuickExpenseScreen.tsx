@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Modal,
   TextInput as RNTextInput,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
@@ -49,6 +51,9 @@ export const QuickExpenseScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerTempDate, setPickerTempDate] = useState<Date>(new Date());
 
   // Load available categories from local SQLite based on transactionType
   useEffect(() => {
@@ -140,7 +145,7 @@ export const QuickExpenseScreen: React.FC = () => {
           categoryId: selectedCategoryId,
           amountCents: cents,
           currency: user?.baseCurrency || 'INR',
-          transactionDate: getTodayDateString(),
+          transactionDate: selectedDate,
           source: payee.trim() || 'Income',
           note: note.trim() || undefined,
         });
@@ -149,7 +154,7 @@ export const QuickExpenseScreen: React.FC = () => {
           categoryId: selectedCategoryId,
           amountCents: cents,
           currency: user?.baseCurrency || 'INR',
-          transactionDate: getTodayDateString(),
+          transactionDate: selectedDate,
           paymentMethod,
           payee: payee.trim() || undefined,
           note: note.trim() || undefined,
@@ -394,21 +399,30 @@ export const QuickExpenseScreen: React.FC = () => {
       </View>
 
       {/* Detail Selectors List (Date, Payment Method, Note) */}
-      <View style={styles.detailsListCard}>
-        {/* Date Row */}
-        <View style={[styles.detailRow, { borderBottomColor: theme.colors.surfaceBorder }]}>
+      <View style={[styles.detailsListCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.surfaceBorder }]}>
+        {/* Date Row — tappable */}
+        <TouchableOpacity
+          style={[styles.detailRow, { borderBottomColor: theme.colors.surfaceBorder }]}
+          activeOpacity={0.7}
+          onPress={() => {
+            const parts = selectedDate.split('-');
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            setPickerTempDate(d);
+            setShowDatePicker(true);
+          }}
+        >
           <View style={styles.detailRowLeft}>
             <Text style={styles.detailRowIcon}>📅</Text>
             <Text style={[styles.detailRowLabel, { color: theme.colors.textPrimary }]}>Date</Text>
           </View>
-          <Text style={[styles.detailRowValue, { color: theme.colors.textSecondary }]}>
-            {formatDisplayDate(getTodayDateString())} &gt;
+          <Text style={[styles.detailRowValue, { color: theme.colors.primary }]}>
+            {formatDisplayDate(selectedDate)} ›
           </Text>
-        </View>
+        </TouchableOpacity>
 
-        {/* Payment Method Selector */}
+        {/* Payment Method — label row then chips row */}
         {transactionType === 'EXPENSE' && (
-          <View style={[styles.detailRow, { borderBottomColor: theme.colors.surfaceBorder }]}>
+          <View style={[styles.paymentMethodBlock, { borderBottomColor: theme.colors.surfaceBorder }]}>
             <View style={styles.detailRowLeft}>
               <Text style={styles.detailRowIcon}>💳</Text>
               <Text style={[styles.detailRowLabel, { color: theme.colors.textPrimary }]}>
@@ -427,6 +441,8 @@ export const QuickExpenseScreen: React.FC = () => {
                       styles.methodChip,
                       {
                         backgroundColor: isSelected ? theme.colors.primary : theme.colors.surfaceSubtle,
+                        borderWidth: isSelected ? 0 : 1,
+                        borderColor: theme.colors.surfaceBorder,
                       },
                     ]}
                   >
@@ -434,7 +450,7 @@ export const QuickExpenseScreen: React.FC = () => {
                       style={[
                         styles.methodChipText,
                         {
-                          color: isSelected ? '#FFFFFF' : theme.colors.textPrimary,
+                          color: isSelected ? '#FFFFFF' : theme.colors.textSecondary,
                           fontWeight: isSelected ? '700' : '500',
                         },
                       ]}
@@ -466,7 +482,7 @@ export const QuickExpenseScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Save Action Button matching uiii.png */}
+      {/* Save Action Button */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity
           onPress={handleSave}
@@ -487,6 +503,142 @@ export const QuickExpenseScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Inline Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.dateModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.dateModalCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.surfaceBorder }]}
+            onPress={() => {}}
+          >
+            <Text style={[styles.dateModalTitle, { color: theme.colors.textPrimary }]}>
+              Select Date
+            </Text>
+
+            {/* Month / Day / Year row */}
+            <View style={styles.datePickerRow}>
+              {/* Day */}
+              <View style={styles.dateSpinnerCol}>
+                <TouchableOpacity
+                  onPress={() => {
+                    const d = new Date(pickerTempDate);
+                    d.setDate(d.getDate() + 1);
+                    if (d <= new Date()) setPickerTempDate(d);
+                  }}
+                  style={styles.spinnerArrow}
+                >
+                  <Text style={[styles.spinnerArrowText, { color: theme.colors.primary }]}>▲</Text>
+                </TouchableOpacity>
+                <Text style={[styles.spinnerValue, { color: theme.colors.textPrimary }]}>
+                  {String(pickerTempDate.getDate()).padStart(2, '0')}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const d = new Date(pickerTempDate);
+                    d.setDate(d.getDate() - 1);
+                    setPickerTempDate(d);
+                  }}
+                  style={styles.spinnerArrow}
+                >
+                  <Text style={[styles.spinnerArrowText, { color: theme.colors.primary }]}>▼</Text>
+                </TouchableOpacity>
+                <Text style={[styles.spinnerLabel, { color: theme.colors.textMuted }]}>Day</Text>
+              </View>
+
+              <Text style={[styles.dateSlash, { color: theme.colors.textMuted }]}>/</Text>
+
+              {/* Month */}
+              <View style={styles.dateSpinnerCol}>
+                <TouchableOpacity
+                  onPress={() => {
+                    const d = new Date(pickerTempDate);
+                    d.setMonth(d.getMonth() + 1);
+                    if (d <= new Date()) setPickerTempDate(d);
+                  }}
+                  style={styles.spinnerArrow}
+                >
+                  <Text style={[styles.spinnerArrowText, { color: theme.colors.primary }]}>▲</Text>
+                </TouchableOpacity>
+                <Text style={[styles.spinnerValue, { color: theme.colors.textPrimary }]}>
+                  {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][pickerTempDate.getMonth()]}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const d = new Date(pickerTempDate);
+                    d.setMonth(d.getMonth() - 1);
+                    setPickerTempDate(d);
+                  }}
+                  style={styles.spinnerArrow}
+                >
+                  <Text style={[styles.spinnerArrowText, { color: theme.colors.primary }]}>▼</Text>
+                </TouchableOpacity>
+                <Text style={[styles.spinnerLabel, { color: theme.colors.textMuted }]}>Month</Text>
+              </View>
+
+              <Text style={[styles.dateSlash, { color: theme.colors.textMuted }]}>/</Text>
+
+              {/* Year */}
+              <View style={styles.dateSpinnerCol}>
+                <TouchableOpacity
+                  onPress={() => {
+                    const d = new Date(pickerTempDate);
+                    d.setFullYear(d.getFullYear() + 1);
+                    if (d <= new Date()) setPickerTempDate(d);
+                  }}
+                  style={styles.spinnerArrow}
+                >
+                  <Text style={[styles.spinnerArrowText, { color: theme.colors.primary }]}>▲</Text>
+                </TouchableOpacity>
+                <Text style={[styles.spinnerValue, { color: theme.colors.textPrimary }]}>
+                  {pickerTempDate.getFullYear()}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const d = new Date(pickerTempDate);
+                    d.setFullYear(d.getFullYear() - 1);
+                    setPickerTempDate(d);
+                  }}
+                  style={styles.spinnerArrow}
+                >
+                  <Text style={[styles.spinnerArrowText, { color: theme.colors.primary }]}>▼</Text>
+                </TouchableOpacity>
+                <Text style={[styles.spinnerLabel, { color: theme.colors.textMuted }]}>Year</Text>
+              </View>
+            </View>
+
+            <View style={styles.dateModalButtons}>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(false)}
+                style={[styles.dateModalCancelBtn, { borderColor: theme.colors.surfaceBorder }]}
+              >
+                <Text style={[styles.dateModalCancelText, { color: theme.colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  const y = pickerTempDate.getFullYear();
+                  const m = String(pickerTempDate.getMonth() + 1).padStart(2, '0');
+                  const d = String(pickerTempDate.getDate()).padStart(2, '0');
+                  setSelectedDate(`${y}-${m}-${d}`);
+                  setShowDatePicker(false);
+                }}
+                style={[styles.dateModalConfirmBtn, { backgroundColor: theme.colors.primary }]}
+              >
+                <Text style={styles.dateModalConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </Screen>
   );
 };
@@ -677,15 +829,21 @@ const styles = StyleSheet.create({
   },
   methodChipsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
+    marginTop: 8,
+  },
+  paymentMethodBlock: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   methodChip: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 10,
   },
   methodChipText: {
-    fontSize: 11,
+    fontSize: 12,
   },
   noteInput: {
     flex: 1,
@@ -710,6 +868,87 @@ const styles = StyleSheet.create({
   savePillButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  // Date picker modal styles
+  dateModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  dateModalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    paddingBottom: 36,
+  },
+  dateModalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 28,
+  },
+  dateSpinnerCol: {
+    alignItems: 'center',
+    minWidth: 64,
+  },
+  spinnerArrow: {
+    padding: 8,
+  },
+  spinnerArrowText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  spinnerValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginVertical: 4,
+    minWidth: 60,
+    textAlign: 'center',
+  },
+  spinnerLabel: {
+    fontSize: 11,
+    marginTop: 4,
+  },
+  dateSlash: {
+    fontSize: 22,
+    fontWeight: '300',
+    marginBottom: 20,
+  },
+  dateModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateModalCancelBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateModalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  dateModalConfirmBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateModalConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
   },
 });
