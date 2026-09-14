@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
 import { Card } from '../../components/common/Card';
@@ -346,11 +346,13 @@ export const SettingsScreen: React.FC = () => {
               Notify when subscriptions or recurring expenses are due
             </Text>
           </View>
-          <Button
-            label={notifSettings.recurringRemindersEnabled ? 'Enabled ✓' : 'Disabled'}
-            variant={notifSettings.recurringRemindersEnabled ? 'primary' : 'outline'}
-            size="sm"
-            onPress={toggleRecurringReminders}
+          <Switch
+            value={notifSettings.recurringRemindersEnabled}
+            onValueChange={toggleRecurringReminders}
+            trackColor={{ false: theme.colors.surfaceBorder, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityRole="switch"
+            accessibilityLabel="Toggle recurring bill reminders"
           />
         </View>
 
@@ -365,11 +367,13 @@ export const SettingsScreen: React.FC = () => {
               Alert when monthly spending reaches 80% or 100% of ceiling
             </Text>
           </View>
-          <Button
-            label={notifSettings.budgetAlertsEnabled ? 'Enabled ✓' : 'Disabled'}
-            variant={notifSettings.budgetAlertsEnabled ? 'primary' : 'outline'}
-            size="sm"
-            onPress={toggleBudgetAlerts}
+          <Switch
+            value={notifSettings.budgetAlertsEnabled}
+            onValueChange={toggleBudgetAlerts}
+            trackColor={{ false: theme.colors.surfaceBorder, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityRole="switch"
+            accessibilityLabel="Toggle budget threshold warnings"
           />
         </View>
       </Card>
@@ -388,11 +392,13 @@ export const SettingsScreen: React.FC = () => {
               Hide balances and transactions when switching between apps
             </Text>
           </View>
-          <Button
-            label={isPrivacyShieldEnabled ? 'Shield On 🔒' : 'Disabled'}
-            variant={isPrivacyShieldEnabled ? 'primary' : 'outline'}
-            size="sm"
-            onPress={() => setPrivacyShieldEnabled(!isPrivacyShieldEnabled)}
+          <Switch
+            value={isPrivacyShieldEnabled}
+            onValueChange={() => setPrivacyShieldEnabled(!isPrivacyShieldEnabled)}
+            trackColor={{ false: theme.colors.surfaceBorder, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityRole="switch"
+            accessibilityLabel="Toggle recent apps privacy shield"
           />
         </View>
       </Card>
@@ -401,12 +407,21 @@ export const SettingsScreen: React.FC = () => {
       <Card style={styles.card}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>Appearance</Text>
         <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Dark Mode</Text>
-          <Button
-            label={isDark ? 'Switch to Light' : 'Switch to Dark'}
-            variant="outline"
-            size="sm"
-            onPress={toggleTheme}
+          <View style={styles.notifTextContainer}>
+            <Text style={[styles.label, { color: theme.colors.textPrimary, fontWeight: '600' }]}>
+              Dark Mode
+            </Text>
+            <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted }]}>
+              {isDark ? 'Dark theme enabled' : 'Light theme enabled'}
+            </Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: theme.colors.surfaceBorder, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityRole="switch"
+            accessibilityLabel="Toggle dark mode theme"
           />
         </View>
       </Card>

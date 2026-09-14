@@ -12,7 +12,6 @@ import { Card } from '../../components/common/Card';
 import { CurrencyText } from '../../components/common/CurrencyText';
 import { SectionHeader } from '../../components/common/SectionHeader';
 import { OfflineBanner } from '../../components/common/OfflineBanner';
-import { SyncStatusPill } from '../../components/common/SyncStatusPill';
 import { SyncErrorBanner } from '../../components/common/SyncErrorBanner';
 import {
   getDashboardSummaryUseCase,
@@ -122,29 +121,7 @@ export const DashboardScreen: React.FC = () => {
       <OfflineBanner isOffline={isOffline} pendingCount={summary.pendingSyncCount} />
       <SyncErrorBanner />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.welcome, { color: theme.colors.textMuted }]}>
-            Welcome back
-          </Text>
-          <Text style={[styles.email, { color: theme.colors.textPrimary }]}>
-            {user?.phoneNumber || user?.email || 'Member'}
-          </Text>
-        </View>
-        <View style={styles.headerActions}>
-          <SyncStatusPill />
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate('QuickAdd')}
-            style={[styles.quickButton, { backgroundColor: theme.colors.primary }]}
-            accessibilityRole="button"
-            accessibilityLabel="Add Expense"
-          >
-            <Text style={styles.quickButtonText}>+ Add</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {/* Primary Hero KPI: Net Cashflow Balance */}
       <Card style={styles.balanceCard}>
@@ -398,40 +375,7 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  welcome: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  email: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  quickButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    minHeight: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 9999,
-  },
-  quickButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
+
   balanceCard: {
     marginBottom: 20,
     padding: 20,
