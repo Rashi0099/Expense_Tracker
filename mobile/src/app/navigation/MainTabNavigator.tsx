@@ -8,11 +8,33 @@ import { QuickExpenseScreen } from '../../screens/capture/QuickExpenseScreen';
 import { BudgetsScreen } from '../../screens/budgets/BudgetsScreen';
 import { SettingsScreen } from '../../screens/settings/SettingsScreen';
 import { useTheme } from '../../theme/useTheme';
+import {
+  IconOverview,
+  IconExpenses,
+  IconAdd,
+  IconBudgets,
+  IconSettings,
+} from '../../components/common/NavIcons';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation, insets }) => {
   const { theme } = useTheme();
+
+  const renderIcon = (name: string, isFocused: boolean, color: string) => {
+    switch (name) {
+      case 'Home':
+        return <IconOverview color={color} size={20} focused={isFocused} />;
+      case 'Expenses':
+        return <IconExpenses color={color} size={20} focused={isFocused} />;
+      case 'Budgets':
+        return <IconBudgets color={color} size={20} focused={isFocused} />;
+      case 'Settings':
+        return <IconSettings color={color} size={20} focused={isFocused} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <View
@@ -21,7 +43,7 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
         {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.surfaceBorder,
-          paddingBottom: Math.max(insets.bottom, 10),
+          paddingBottom: Math.max(insets.bottom, 8),
         },
       ]}
     >
@@ -36,6 +58,8 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
             : options.title !== undefined
             ? options.title
             : route.name;
+
+        const iconColor = isFocused ? theme.colors.primary : theme.colors.textMuted;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -62,7 +86,7 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
               key={route.key}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={typeof label === 'string' ? label : 'Add Expense'}
+              accessibilityLabel="Add Expense"
               testID={options.tabBarTestID}
               onPress={onPress}
               onLongPress={onLongPress}
@@ -71,15 +95,26 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
             >
               <View
                 style={[
-                  styles.addPill,
+                  styles.addFab,
                   {
                     backgroundColor: theme.colors.primary,
                     shadowColor: theme.colors.primary,
                   },
                 ]}
               >
-                <Text style={styles.addPillText}>+ Add</Text>
+                <IconAdd color="#FFFFFF" size={16} />
               </View>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isFocused ? theme.colors.primary : theme.colors.textMuted,
+                    fontWeight: isFocused ? '700' : '600',
+                  },
+                ]}
+              >
+                Add
+              </Text>
             </TouchableOpacity>
           );
         }
@@ -96,27 +131,21 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
             style={styles.tabButton}
             activeOpacity={0.7}
           >
-            <View
+            <View style={styles.iconContainer}>
+              {renderIcon(route.name, isFocused, iconColor)}
+            </View>
+            <Text
+              numberOfLines={1}
               style={[
-                styles.pill,
-                isFocused && {
-                  backgroundColor: theme.colors.primaryLight,
+                styles.label,
+                {
+                  color: iconColor,
+                  fontWeight: isFocused ? '700' : '500',
                 },
               ]}
             >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.label,
-                  {
-                    color: isFocused ? theme.colors.primary : theme.colors.textMuted,
-                    fontWeight: isFocused ? '700' : '600',
-                  },
-                ]}
-              >
-                {typeof label === 'string' ? label : route.name}
-              </Text>
-            </View>
+              {typeof label === 'string' ? label : route.name}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -153,7 +182,7 @@ export const MainTabNavigator: React.FC = () => {
         name="QuickAdd"
         component={QuickExpenseScreen}
         options={{
-          tabBarLabel: '+ Add',
+          tabBarLabel: 'Add',
         }}
       />
 
@@ -196,33 +225,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 4,
   },
-  pill: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
+  iconContainer: {
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 54,
+    marginBottom: 4,
   },
   label: {
-    fontSize: 12.5,
+    fontSize: 11,
     letterSpacing: -0.2,
   },
-  addPill: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 16,
+  addFab: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
     elevation: 2,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  addPillText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
 });

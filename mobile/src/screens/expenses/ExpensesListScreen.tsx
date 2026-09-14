@@ -27,6 +27,7 @@ import { DataEvents } from '../../database/sqlite/DataEvents';
 import { PAYMENT_METHODS } from '../../app/config/constants';
 import { useSync } from '../../sync/hooks/useSync';
 import { useNetworkState } from '../../sync/network/useNetworkState';
+import { IconFilter } from '../../components/common/NavIcons';
 
 const PAGE_SIZE = 25;
 
@@ -223,14 +224,20 @@ export const ExpensesListScreen: React.FC = () => {
           accessibilityRole="button"
           accessibilityLabel={`Open filter sheet. ${activeFiltersCount} filters currently active.`}
         >
-          <Text
-            style={[
-              styles.filterButtonText,
-              { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
-            ]}
-          >
-            Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <IconFilter
+              color={activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary}
+              size={13}
+            />
+            <Text
+              style={[
+                styles.filterButtonText,
+                { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
+              ]}
+            >
+              Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
+            </Text>
+          </View>
         </TouchableOpacity>
       </View>
 
