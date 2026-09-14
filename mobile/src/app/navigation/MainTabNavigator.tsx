@@ -59,7 +59,7 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
             ? options.title
             : route.name;
 
-        const iconColor = isFocused ? theme.colors.primary : theme.colors.textMuted;
+        const iconColor = isFocused ? theme.colors.primary : theme.colors.textSecondary;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -90,8 +90,8 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
               testID={options.tabBarTestID}
               onPress={onPress}
               onLongPress={onLongPress}
-              style={styles.tabButton}
-              activeOpacity={0.7}
+              style={styles.fabTabButton}
+              activeOpacity={0.8}
               delayPressIn={0}
             >
               <View
@@ -103,19 +103,8 @@ const CleanTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigati
                   },
                 ]}
               >
-                <IconAdd color="#FFFFFF" size={20} />
+                <IconAdd color="#FFFFFF" size={22} />
               </View>
-              <Text
-                style={[
-                  styles.label,
-                  {
-                    color: isFocused ? theme.colors.primary : theme.colors.textMuted,
-                    fontWeight: isFocused ? '700' : '600',
-                  },
-                ]}
-              >
-                Add
-              </Text>
             </TouchableOpacity>
           );
         }
@@ -170,7 +159,7 @@ export const MainTabNavigator: React.FC = () => {
         name="Home"
         component={DashboardScreen}
         options={{
-          tabBarLabel: 'Overview',
+          tabBarLabel: 'Home',
         }}
       />
 
@@ -186,7 +175,7 @@ export const MainTabNavigator: React.FC = () => {
         name="QuickAdd"
         component={QuickExpenseScreen}
         options={{
-          tabBarLabel: 'Add',
+          tabBarLabel: '',
         }}
       />
 
@@ -202,7 +191,7 @@ export const MainTabNavigator: React.FC = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Settings',
+          tabBarLabel: 'More',
         }}
       />
     </Tab.Navigator>
@@ -215,19 +204,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderTopWidth: 1,
-    paddingTop: 6,
+    paddingTop: 8,
     paddingHorizontal: 8,
-    elevation: 6,
-    shadowColor: '#000000',
+    elevation: 8,
+    shadowColor: '#17233C',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 6,
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 2,
+    paddingVertical: 4,
+  },
+  fabTabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 0,
+    marginTop: -8,
   },
   iconContainer: {
     height: 24,
@@ -240,15 +236,14 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   addFab: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 3,
-    elevation: 3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
 });

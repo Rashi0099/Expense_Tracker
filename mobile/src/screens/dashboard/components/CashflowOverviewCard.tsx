@@ -150,239 +150,230 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
     }
   };
 
+  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+
   return (
-    <View
-      style={[
-        styles.cashflowCard,
-        {
-          backgroundColor: isDark ? '#121626' : '#FFFFFF',
-          borderColor: isDark ? '#232A42' : '#E2E8F0',
-          shadowOpacity: isDark ? 0.25 : 0.06,
-        },
-      ]}
-    >
-      {/* Top Header Row */}
-      <View style={styles.cardHeaderRow}>
-        {/* Left: Wallet Icon Badge + Balance Texts */}
-        <View style={styles.walletAndInfo}>
-          <View
-            style={[
-              styles.walletBadge,
-              { backgroundColor: isDark ? '#384370' : '#EEF2FF' },
-            ]}
+    <View style={styles.outerContainer}>
+      {/* 1. Total Balance Card */}
+      <View
+        style={[
+          styles.balanceCard,
+          {
+            backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
+            borderColor: isDark ? '#2E384D' : '#E7D788',
+            shadowOpacity: isDark ? 0.3 : 0.06,
+          },
+        ]}
+      >
+        {/* Top Header Row */}
+        <View style={styles.cardHeaderRow}>
+          {/* Left: Total Balance label + Eye Icon */}
+          <TouchableOpacity
+            onPress={() => setIsBalanceHidden((prev) => !prev)}
+            activeOpacity={0.7}
+            style={styles.balanceLabelRow}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle balance visibility"
           >
-            <View
+            <Text
               style={[
-                styles.walletOuter,
-                { borderColor: isDark ? '#FFFFFF' : '#4F46E5' },
+                styles.balanceLabel,
+                { color: isDark ? '#CBD5E1' : '#17233C' },
               ]}
             >
-              <View
+              Total Balance
+            </Text>
+            <Text style={styles.eyeIcon}>{isBalanceHidden ? '🙈' : '👁️'}</Text>
+          </TouchableOpacity>
+
+          {/* Right: Fast Inline Filter Dropdown */}
+          <View ref={pillRef} collapsable={false} style={styles.filterPillWrapper}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleOpenDropdown}
+              style={[
+                styles.filterPill,
+                {
+                  backgroundColor: isDark ? '#1F293D' : '#F7F1E5',
+                  borderColor: isDark ? '#2E384D' : '#E7D788',
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter: ${FILTER_LABELS[selectedFilter]}`}
+            >
+              <Text
                 style={[
-                  styles.walletFlap,
-                  {
-                    borderColor: isDark ? '#FFFFFF' : '#4F46E5',
-                    backgroundColor: isDark ? '#384370' : '#EEF2FF',
-                  },
+                  styles.filterPillText,
+                  { color: isDark ? '#F8FAFC' : '#17233C' },
                 ]}
+              >
+                {FILTER_LABELS[selectedFilter]}
+              </Text>
+              <Text
+                style={[
+                  styles.filterPillChevron,
+                  { color: isDark ? '#94A3B8' : '#718096' },
+                ]}
+              >
+                {showDropdown ? '▴' : '▾'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Zero-Delay Native Modal Dropdown Menu */}
+            <Modal
+              transparent
+              visible={showDropdown}
+              animationType="none"
+              onRequestClose={() => setShowDropdown(false)}
+              statusBarTranslucent
+            >
+              <TouchableOpacity
+                style={styles.modalBackdrop}
+                activeOpacity={1}
+                onPress={() => setShowDropdown(false)}
               >
                 <View
                   style={[
-                    styles.walletClaspDot,
-                    { backgroundColor: isDark ? '#FFFFFF' : '#4F46E5' },
+                    styles.dropdownMenu,
+                    {
+                      top: dropdownPos.top,
+                      right: dropdownPos.right,
+                      backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
+                      borderColor: isDark ? '#2E384D' : '#E7D788',
+                      shadowOpacity: isDark ? 0.45 : 0.12,
+                    },
                   ]}
-                />
-              </View>
-            </View>
+                >
+                  {FILTER_OPTIONS.map((opt) => {
+                    const isSelected = opt.value === selectedFilter;
+                    return (
+                      <TouchableOpacity
+                        key={opt.value}
+                        onPress={() => handleSelectFilter(opt.value)}
+                        activeOpacity={0.6}
+                        style={[
+                          styles.dropdownItem,
+                          isSelected && {
+                            backgroundColor: isDark
+                              ? 'rgba(29, 88, 66, 0.25)'
+                              : 'rgba(29, 88, 66, 0.12)',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.dropdownItemText,
+                            isSelected
+                              ? { color: isDark ? '#FFFFFF' : '#1D5842', fontWeight: '700' }
+                              : { color: isDark ? '#CBD5E1' : '#475569', fontWeight: '500' },
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                        {isSelected && (
+                          <Text style={[styles.dropdownItemCheck, { color: '#1D5842' }]}>✓</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </TouchableOpacity>
+            </Modal>
           </View>
+        </View>
 
-          <View style={styles.balanceTexts}>
-            <Text
-              style={[
-                styles.balanceTag,
-                { color: isDark ? '#8F9BB3' : '#64748B' },
-              ]}
-              numberOfLines={1}
-            >
-              BALANCE
-            </Text>
+        {/* Balance Amount & Trend with Wave Illustration */}
+        <View style={styles.balanceBodyRow}>
+          <View style={styles.balanceAmountColumn}>
             <Text
               style={[
                 styles.balanceBigNumber,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                { color: isDark ? '#FFFFFF' : '#17233C' },
               ]}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.7}
             >
-              {formatCurrencyFromCents(metrics.netBalanceCents, currency)}
+              {isBalanceHidden
+                ? '••••••••'
+                : formatCurrencyFromCents(metrics.netBalanceCents, currency)}
             </Text>
+            <View style={styles.trendRow}>
+              <Text style={styles.trendArrow}>↑</Text>
+              <Text style={styles.trendText}>12% from last month</Text>
+            </View>
           </View>
-        </View>
 
-        {/* Right: Fast Inline Filter Dropdown */}
-        <View ref={pillRef} collapsable={false} style={styles.filterPillWrapper}>
-          <TouchableOpacity
-            activeOpacity={0.6}
-            onPress={handleOpenDropdown}
-            style={[
-              styles.filterPill,
-              {
-                backgroundColor: isDark ? '#20273F' : '#F1F5F9',
-                borderColor: isDark ? '#2D385A' : '#E2E8F0',
-                borderWidth: isDark ? 0 : 1,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Filter: ${FILTER_LABELS[selectedFilter]}`}
-          >
-            <Text
-              style={[
-                styles.filterPillText,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
-              ]}
-            >
-              {FILTER_LABELS[selectedFilter]}
-            </Text>
-            <Text
-              style={[
-                styles.filterPillChevron,
-                { color: isDark ? '#8F9BB3' : '#64748B' },
-              ]}
-            >
-              {showDropdown ? '▴' : '▾'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Zero-Delay Native Modal Dropdown Menu */}
-          <Modal
-            transparent
-            visible={showDropdown}
-            animationType="none"
-            onRequestClose={() => setShowDropdown(false)}
-            statusBarTranslucent
-          >
-            <TouchableOpacity
-              style={styles.modalBackdrop}
-              activeOpacity={1}
-              onPress={() => setShowDropdown(false)}
-            >
-              <View
-                style={[
-                  styles.dropdownMenu,
-                  {
-                    top: dropdownPos.top,
-                    right: dropdownPos.right,
-                    backgroundColor: isDark ? '#1B2138' : '#FFFFFF',
-                    borderColor: isDark ? '#2D385A' : '#E2E8F0',
-                    shadowOpacity: isDark ? 0.45 : 0.12,
-                  },
-                ]}
-              >
-                {FILTER_OPTIONS.map((opt) => {
-                  const isSelected = opt.value === selectedFilter;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      onPress={() => handleSelectFilter(opt.value)}
-                      activeOpacity={0.6}
-                      style={[
-                        styles.dropdownItem,
-                        isSelected && {
-                          backgroundColor: isDark
-                            ? 'rgba(99, 102, 241, 0.22)'
-                            : 'rgba(99, 102, 241, 0.12)',
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownItemText,
-                          isSelected
-                            ? { color: isDark ? '#FFFFFF' : '#4F46E5', fontWeight: '700' }
-                            : { color: isDark ? '#C5CEE0' : '#475569', fontWeight: '500' },
-                        ]}
-                      >
-                        {opt.label}
-                      </Text>
-                      {isSelected && (
-                        <Text style={styles.dropdownItemCheck}>✓</Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </TouchableOpacity>
-          </Modal>
+          {/* Decorative subtle golden wave curves matching mockup */}
+          <View style={styles.waveContainer}>
+            <View style={[styles.waveCurve1, { borderColor: isDark ? '#92400E' : '#D99A27' }]} />
+            <View style={[styles.waveCurve2, { borderColor: isDark ? '#78350F' : '#E7D788' }]} />
+          </View>
         </View>
       </View>
 
-      {/* Divider Line */}
-      <View
-        style={[
-          styles.cardDivider,
-          { backgroundColor: isDark ? '#232A42' : '#E2E8F0' },
-        ]}
-      />
-
-      {/* Bottom Metrics Row */}
-      <View style={styles.cardMetricsRow}>
-        {/* Total Income Item */}
+      {/* 2. Side-by-Side Income & Expenses Cards */}
+      <View style={styles.metricsRow}>
+        {/* Income Card */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={onNavigateIncome}
-          style={styles.metricHalf}
+          style={[
+            styles.metricCard,
+            {
+              backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
+              borderColor: isDark ? '#2E384D' : '#E7D788',
+            },
+          ]}
           accessibilityRole="button"
           accessibilityLabel="View income streams"
         >
-          <View style={styles.incomeArrowBadge}>
-            <Text style={styles.incomeArrowText}>↑</Text>
+          <View style={styles.incomeBadge}>
+            <Text style={styles.incomeArrow}>↑</Text>
           </View>
-          <View style={styles.metricTextsColumn}>
-            <Text
-              style={[
-                styles.metricLabelText,
-                { color: isDark ? '#8F9BB3' : '#64748B' },
-              ]}
-            >
-              Total Income
+          <View style={styles.metricTexts}>
+            <Text style={[styles.metricLabel, { color: isDark ? '#CBD5E1' : '#718096' }]}>
+              Income
             </Text>
-            <Text style={styles.incomeValueText}>
-              {formatCurrencyFromCents(metrics.totalIncomeCents, currency)}
+            <Text
+              numberOfLines={1}
+              style={[styles.metricValue, { color: isDark ? '#FFFFFF' : '#17233C' }]}
+            >
+              {isBalanceHidden
+                ? '••••'
+                : formatCurrencyFromCents(metrics.totalIncomeCents, currency)}
             </Text>
           </View>
         </TouchableOpacity>
 
-        {/* Vertical Divider */}
-        <View
-          style={[
-            styles.metricVerticalDivider,
-            { backgroundColor: isDark ? '#232A42' : '#E2E8F0' },
-          ]}
-        />
-
-        {/* Total Expenses Item */}
+        {/* Expenses Card */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={onNavigateExpenses}
-          style={[styles.metricHalf, styles.expenseHalf]}
+          style={[
+            styles.metricCard,
+            {
+              backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
+              borderColor: isDark ? '#2E384D' : '#E7D788',
+            },
+          ]}
           accessibilityRole="button"
           accessibilityLabel="View expense items"
         >
-          <View style={styles.expenseArrowBadge}>
-            <Text style={styles.expenseArrowText}>↓</Text>
+          <View style={styles.expenseBadge}>
+            <Text style={styles.expenseArrow}>↓</Text>
           </View>
-          <View style={styles.metricTextsColumn}>
-            <Text
-              style={[
-                styles.metricLabelText,
-                { color: isDark ? '#8F9BB3' : '#64748B' },
-              ]}
-            >
-              Total Expenses
+          <View style={styles.metricTexts}>
+            <Text style={[styles.metricLabel, { color: isDark ? '#CBD5E1' : '#718096' }]}>
+              Expenses
             </Text>
-            <Text style={styles.expenseValueText}>
-              {formatCurrencyFromCents(metrics.totalExpensesCents, currency)}
+            <Text
+              numberOfLines={1}
+              style={[styles.metricValue, { color: '#E05D6A' }]}
+            >
+              {isBalanceHidden
+                ? '••••'
+                : formatCurrencyFromCents(metrics.totalExpensesCents, currency)}
             </Text>
           </View>
         </TouchableOpacity>
@@ -394,79 +385,38 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
 CashflowOverviewCard.displayName = 'CashflowOverviewCard';
 
 const styles = StyleSheet.create({
-  cashflowCard: {
+  outerContainer: {
+    marginBottom: 16,
+  },
+  balanceCard: {
     borderRadius: 22,
     borderWidth: 1,
     padding: 18,
-    marginBottom: 20,
-    shadowColor: '#000000',
+    marginBottom: 12,
+    shadowColor: '#17233C',
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
-    elevation: 4,
-    overflow: 'visible',
+    elevation: 3,
+    overflow: 'hidden',
   },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     zIndex: 100,
   },
-  walletAndInfo: {
+  balanceLabelRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-    paddingRight: 6,
-  },
-  walletBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
+    gap: 6,
   },
-  walletOuter: {
-    width: 24,
-    height: 18,
-    borderRadius: 5,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 2,
+  balanceLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
-  walletFlap: {
-    width: 8,
-    height: 10,
-    borderTopLeftRadius: 4,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1.5,
-    borderRightWidth: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  walletClaspDot: {
-    width: 2.5,
-    height: 2.5,
-    borderRadius: 1.5,
-  },
-  balanceTexts: {
-    flex: 1,
-  },
-  balanceTag: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-  },
-  balanceBigNumber: {
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 2,
-    marginBottom: 2,
-  },
-  balanceSubNotice: {
-    fontSize: 12,
-    fontWeight: '500',
+  eyeIcon: {
+    fontSize: 15,
   },
   filterPillWrapper: {
     position: 'relative',
@@ -475,14 +425,15 @@ const styles = StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    gap: 4,
+    gap: 5,
   },
   filterPillText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   filterPillChevron: {
     fontSize: 10,
@@ -499,7 +450,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 5,
     paddingHorizontal: 5,
-    shadowColor: '#000000',
+    shadowColor: '#17233C',
     shadowOffset: { width: 0, height: 6 },
     shadowRadius: 12,
     elevation: 16,
@@ -519,73 +470,120 @@ const styles = StyleSheet.create({
   dropdownItemCheck: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#6366F1',
   },
-  cardDivider: {
-    height: 1,
-    marginTop: 18,
-    marginBottom: 16,
+  balanceBodyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: 12,
   },
-  cardMetricsRow: {
+  balanceAmountColumn: {
+    flex: 1,
+  },
+  balanceBigNumber: {
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  trendRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 6,
+    gap: 4,
   },
-  metricHalf: {
+  trendArrow: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#16A085',
+  },
+  trendText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#16A085',
+  },
+  waveContainer: {
+    width: 80,
+    height: 40,
+    position: 'relative',
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  waveCurve1: {
+    width: 70,
+    height: 35,
+    borderBottomWidth: 2.5,
+    borderRightWidth: 2,
+    borderRadius: 30,
+    position: 'absolute',
+    bottom: 2,
+    right: 0,
+    opacity: 0.8,
+  },
+  waveCurve2: {
+    width: 50,
+    height: 25,
+    borderBottomWidth: 1.5,
+    borderRadius: 20,
+    position: 'absolute',
+    bottom: 0,
+    right: 15,
+    opacity: 0.5,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  metricCard: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    shadowColor: '#17233C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  expenseHalf: {
-    paddingLeft: 12,
-  },
-  incomeArrowBadge: {
+  incomeBadge: {
     width: 38,
     height: 38,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0, 208, 156, 0.15)',
+    borderRadius: 12,
+    backgroundColor: '#E8F8F5',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
-  incomeArrowText: {
+  incomeArrow: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#00D09C',
+    color: '#16A085',
   },
-  expenseArrowBadge: {
+  expenseBadge: {
     width: 38,
     height: 38,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255, 107, 139, 0.15)',
+    borderRadius: 12,
+    backgroundColor: '#FDE8E9',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
-  expenseArrowText: {
+  expenseArrow: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FF6B8B',
+    color: '#E05D6A',
   },
-  metricTextsColumn: {
+  metricTexts: {
     flex: 1,
   },
-  metricLabelText: {
+  metricLabel: {
     fontSize: 12,
     fontWeight: '500',
     marginBottom: 2,
   },
-  incomeValueText: {
-    fontSize: 17,
+  metricValue: {
+    fontSize: 16,
     fontWeight: '800',
-    color: '#00D09C',
-  },
-  expenseValueText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FF6B8B',
-  },
-  metricVerticalDivider: {
-    width: 1,
-    height: 36,
   },
 });

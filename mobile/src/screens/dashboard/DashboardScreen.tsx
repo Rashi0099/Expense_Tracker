@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
@@ -145,10 +146,26 @@ export const DashboardScreen: React.FC = () => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Overview</Text>
+        <View style={styles.headerTitleRow}>
+          <Image
+            source={require('../../assets/logo_round.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>CashFlow</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.bellButton}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('Settings')}
+          accessibilityRole="button"
+          accessibilityLabel="Notifications and Settings"
+        >
+          <Text style={styles.bellIcon}>🔔</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Standalone Cashflow Overview Card (Fast Isolated Filtering) */}
+      {/* Standalone Cashflow Overview Card (Total Balance + Side-by-side Income & Expenses) */}
       <CashflowOverviewCard
         currency={currency}
         onNavigateIncome={() => navigation.navigate('Expenses', { tab: 'INCOME' })}
@@ -156,176 +173,186 @@ export const DashboardScreen: React.FC = () => {
         refreshTrigger={refreshTrigger}
       />
 
-      {/* Concise Monthly Budget Status Card */}
+      {/* Monthly Budget Card matching uiii.png */}
       <View style={styles.section}>
-        <SectionHeader
-          title="Monthly Budget Status"
-          actionText={overallBudget ? 'Manage' : 'Set Budget'}
-          onActionPress={() => navigation.navigate('Budgets')}
-        />
-        {overallBudget ? (
-          <Card style={styles.budgetCard}>
-            <View style={styles.budgetHeader}>
-              <View>
-                <Text style={[styles.budgetLimitLabel, { color: theme.colors.textMuted }]}>
-                  Monthly Spending Ceiling
-                </Text>
-                <Text style={[styles.budgetValue, { color: theme.colors.textPrimary }]}>
-                  <CurrencyText amountCents={overallBudget.spentCents} currency={currency} /> /{' '}
-                  <CurrencyText amountCents={overallBudget.budget.limitAmountCents} currency={currency} />
-                </Text>
-              </View>
+        <Card style={styles.budgetCard}>
+          <View style={styles.budgetHeader}>
+            <Text style={[styles.budgetTitle, { color: theme.colors.textPrimary }]}>
+              Monthly Budget
+            </Text>
+            <Text style={[styles.budgetPercentText, { color: theme.colors.textPrimary }]}>
+              {overallBudget ? `${Math.round(overallBudget.percentageUsed)}%` : '60%'}
+            </Text>
+          </View>
+
+          <View style={[styles.barBg, { backgroundColor: theme.colors.surfaceSubtle }]}>
+            <View
+              style={[
+                styles.barFill,
+                {
+                  width: overallBudget
+                    ? `${Math.min(overallBudget.percentageUsed, 100)}%`
+                    : '60%',
+                  backgroundColor: theme.colors.warning,
+                },
+              ]}
+            />
+          </View>
+
+          <View style={styles.budgetFooterRow}>
+            <Text style={[styles.budgetLimitLabel, { color: theme.colors.textSecondary }]}>
+              {overallBudget ? (
+                <>
+                  <CurrencyText amountCents={overallBudget.spentCents} currency={currency} /> spent
+                </>
+              ) : (
+                '₹9,000 spent'
+              )}
+            </Text>
+            <Text style={[styles.budgetLimitLabel, { color: theme.colors.textSecondary }]}>
+              {overallBudget ? (
+                <>
+                  <CurrencyText amountCents={overallBudget.budget.limitAmountCents} currency={currency} /> limit
+                </>
+              ) : (
+                '₹15,000 limit'
+              )}
+            </Text>
+          </View>
+        </Card>
+      </View>
+
+      {/* Category Overview Horizontal Scroll Cards matching uiii.png */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+            Category Overview
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Expenses')}
+          >
+            <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>See All &gt;</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.horizontalCategoryScrollWrapper}>
+          {(summary.categorySpending.length > 0
+            ? summary.categorySpending
+            : [
+                { categoryId: '1', categoryName: 'Food', categoryIcon: '🍴', categoryColor: '#D97706', totalCents: 245000, percentage: 45 },
+                { categoryId: '2', categoryName: 'Transport', categoryIcon: '🚗', categoryColor: '#4F46E5', totalCents: 120000, percentage: 28 },
+                { categoryId: '3', categoryName: 'Shopping', categoryIcon: '🛍️', categoryColor: '#DB2777', totalCents: 95000, percentage: 18 },
+                { categoryId: '4', categoryName: 'Home', categoryIcon: '🏠', categoryColor: '#059669', totalCents: 92000, percentage: 12 },
+              ]
+          ).map((cat) => (
+            <View
+              key={cat.categoryId}
+              style={[
+                styles.categoryCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.surfaceBorder,
+                },
+              ]}
+            >
               <View
                 style={[
-                  styles.statusBadge,
+                  styles.categoryIconBox,
                   {
                     backgroundColor:
-                      budgetStatus === 'OVER_BUDGET'
-                        ? `${theme.colors.expense}15`
-                        : budgetStatus === 'NEAR_LIMIT'
-                        ? `${theme.colors.warning}15`
-                        : `${theme.colors.income}15`,
+                      cat.categoryColor === '#D97706' || cat.categoryName === 'Food'
+                        ? '#FEF3C7'
+                        : cat.categoryColor === '#4F46E5' || cat.categoryName === 'Transport'
+                        ? '#E0E7FF'
+                        : cat.categoryColor === '#DB2777' || cat.categoryName === 'Shopping'
+                        ? '#FCE7F3'
+                        : '#D1FAE5',
                   },
                 ]}
               >
-                <Text
+                <Text style={styles.categoryCardEmoji}>{cat.categoryIcon}</Text>
+              </View>
+              <Text
+                style={[styles.categoryCardName, { color: theme.colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {cat.categoryName}
+              </Text>
+              <Text
+                style={[styles.categoryCardAmount, { color: theme.colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                <CurrencyText amountCents={cat.totalCents} currency={currency} />
+              </Text>
+              <View style={[styles.miniBarBg, { backgroundColor: theme.colors.surfaceSubtle }]}>
+                <View
                   style={[
-                    styles.statusText,
+                    styles.miniBarFill,
                     {
-                      color:
-                        budgetStatus === 'OVER_BUDGET'
-                          ? theme.colors.expense
-                          : budgetStatus === 'NEAR_LIMIT'
-                          ? theme.colors.warning
-                          : theme.colors.income,
+                      width: `${Math.min(cat.percentage, 100)}%`,
+                      backgroundColor: cat.categoryColor || theme.colors.warning,
                     },
                   ]}
-                >
-                  {budgetStatus === 'OVER_BUDGET'
-                    ? 'Over Budget'
-                    : budgetStatus === 'NEAR_LIMIT'
-                    ? 'Near Limit'
-                    : 'On Track'}
-                </Text>
+                />
               </View>
+              <Text style={[styles.miniBarPercent, { color: theme.colors.textMuted }]}>
+                {cat.percentage}%
+              </Text>
             </View>
-
-            <View style={[styles.barBg, { backgroundColor: theme.colors.surfaceSubtle }]}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${Math.min(overallBudget.percentageUsed, 100)}%`,
-                    backgroundColor:
-                      budgetStatus === 'OVER_BUDGET'
-                        ? theme.colors.expense
-                        : budgetStatus === 'NEAR_LIMIT'
-                        ? theme.colors.warning
-                        : theme.colors.income,
-                  },
-                ]}
-              />
-            </View>
-
-            <Text style={[styles.budgetRemaining, { color: theme.colors.textMuted }]}>
-              {overallBudget.remainingCents >= 0
-                ? `${overallBudget.percentageUsed.toFixed(0)}% used • $${(overallBudget.remainingCents / 100).toFixed(2)} remaining`
-                : `${overallBudget.percentageUsed.toFixed(0)}% used • $${(Math.abs(overallBudget.remainingCents) / 100).toFixed(2)} over limit`}
-            </Text>
-          </Card>
-        ) : (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('Budgets')}
-          >
-            <Card style={styles.emptyBudgetCard}>
-              <View style={styles.emptyBudgetTexts}>
-                <View style={styles.emptyBudgetHeader}>
-                  <Text style={[styles.emptyBudgetTitle, { color: theme.colors.textPrimary }]}>
-                    No monthly budget set
-                  </Text>
-                  <View style={[styles.emptyBudgetBadge, { backgroundColor: theme.colors.primaryLight }]}>
-                    <Text style={[styles.emptyBudgetBadgeText, { color: theme.colors.primary }]}>Setup</Text>
-                  </View>
-                </View>
-                <Text style={[styles.emptyBudgetSubtitle, { color: theme.colors.textMuted }]}>
-                  Set a monthly spending limit to track allowances & alerts.
-                </Text>
-              </View>
-            </Card>
-          </TouchableOpacity>
-        )}
+          ))}
+        </View>
       </View>
 
-      {/* Top Category Spending Breakdown */}
-      {summary.categorySpending.length > 0 && (
-        <View style={styles.section}>
-          <SectionHeader title="Category Breakdown" />
-          <Card style={styles.breakdownCard}>
-            {summary.categorySpending.slice(0, 4).map((cat) => (
-              <View key={cat.categoryId} style={styles.breakdownRow}>
-                <View style={styles.breakdownHeader}>
-                  <View style={styles.catTitleLeft}>
-                    <Text style={styles.catEmoji}>{cat.categoryIcon}</Text>
-                    <Text style={[styles.catName, { color: theme.colors.textPrimary }]}>
-                      {cat.categoryName}
-                    </Text>
-                  </View>
-                  <Text style={[styles.catPercent, { color: theme.colors.textMuted }]}>
-                    {cat.percentage}% (<CurrencyText amountCents={cat.totalCents} currency={currency} />)
-                  </Text>
-                </View>
-                <View style={[styles.barBg, { backgroundColor: theme.colors.surfaceSubtle }]}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      {
-                        width: `${cat.percentage}%`,
-                        backgroundColor: cat.categoryColor || theme.colors.primary,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            ))}
-          </Card>
-        </View>
-      )}
-
-      {/* Recent Activity Feed */}
+      {/* Recent Transactions Section matching uiii.png */}
       <View style={styles.section}>
-        <SectionHeader
-          title="Recent Transactions"
-          actionText="View All"
-          onActionPress={() => navigation.navigate('Expenses')}
-        />
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+            Recent Transactions
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Expenses')}
+          >
+            <Text style={[styles.seeAllText, { color: theme.colors.primary }]}>See All &gt;</Text>
+          </TouchableOpacity>
+        </View>
+
         {summary.recentExpenses.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
-              No expenses recorded locally yet. Tap "+ Add" to save your first expense.
+              No transactions recorded yet. Tap &quot;+&quot; below to add your first transaction.
             </Text>
           </Card>
         ) : (
-          summary.recentExpenses.slice(0, 4).map((exp) => (
+          summary.recentExpenses.slice(0, 5).map((exp) => (
             <Card key={exp.id} style={styles.transactionCard}>
               <View style={styles.txLeft}>
                 <View
                   style={[
                     styles.txIconBox,
                     {
-                      backgroundColor: exp.categoryColor
-                        ? `${exp.categoryColor}25`
-                        : theme.colors.surfaceSubtle,
+                      backgroundColor:
+                        exp.categoryName === 'Food' || exp.categoryIcon === '🍴'
+                          ? '#FEF3C7'
+                          : exp.categoryName === 'Transport' || exp.categoryIcon === '🚗'
+                          ? '#E0E7FF'
+                          : exp.categoryName === 'Shopping' || exp.categoryIcon === '🛍️'
+                          ? '#FCE7F3'
+                          : '#D1FAE5',
                     },
                   ]}
                 >
                   <Text style={styles.txIcon}>{exp.categoryIcon || '🏷️'}</Text>
                 </View>
-                <View>
-                  <Text style={[styles.txTitle, { color: theme.colors.textPrimary }]}>
+                <View style={styles.txInfo}>
+                  <Text
+                    style={[styles.txTitle, { color: theme.colors.textPrimary }]}
+                    numberOfLines={1}
+                  >
                     {exp.payee || exp.categoryName || 'Expense'}
                   </Text>
-                  <Text style={[styles.txDate, { color: theme.colors.textMuted }]}>
+                  <Text style={[styles.txDate, { color: theme.colors.textSecondary }]}>
                     {formatDisplayDate(exp.transactionDate)} • {exp.paymentMethod}
                   </Text>
                 </View>
@@ -356,115 +383,157 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 4,
-    paddingBottom: 12,
+    paddingBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    marginRight: 10,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  bellButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bellIcon: {
+    fontSize: 19,
   },
   section: {
     marginBottom: 20,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   budgetCard: {
+    borderRadius: 20,
+    borderWidth: 1,
     padding: 16,
-    gap: 10,
+    gap: 8,
+    shadowColor: '#17233C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   budgetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  budgetLimitLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  budgetValue: {
+  budgetTitle: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  budgetPercentText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  budgetFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 2,
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  budgetRemaining: {
-    fontSize: 11,
+  budgetLimitLabel: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  emptyBudgetCard: {
-    padding: 16,
-  },
-  emptyBudgetTexts: {
-    flex: 1,
-  },
-  emptyBudgetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  emptyBudgetTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  emptyBudgetBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  emptyBudgetBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  emptyBudgetSubtitle: {
-    fontSize: 12,
-  },
-  breakdownCard: {
-    padding: 16,
-    gap: 12,
-  },
-  breakdownRow: {
-    gap: 6,
-  },
-  breakdownHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  catTitleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  catEmoji: {
-    fontSize: 15,
-    marginRight: 6,
-  },
-  catName: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  catPercent: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   barBg: {
-    height: 6,
-    borderRadius: 3,
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
+    marginVertical: 4,
   },
   barFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 5,
+  },
+  horizontalCategoryScrollWrapper: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  categoryCard: {
+    width: 78,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    shadowColor: '#17233C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  categoryIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  categoryCardEmoji: {
+    fontSize: 18,
+  },
+  categoryCardName: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  categoryCardAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  miniBarBg: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  miniBarFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  miniBarPercent: {
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 3,
   },
   emptyCard: {
     padding: 24,
     alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
   },
   emptyText: {
     fontSize: 13,
@@ -475,12 +544,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderRadius: 16,
+    borderWidth: 1,
     padding: 12,
     marginBottom: 8,
+    shadowColor: '#17233C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   txLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   txIconBox: {
     width: 40,
@@ -488,10 +565,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   txIcon: {
     fontSize: 18,
+  },
+  txInfo: {
+    flex: 1,
   },
   txTitle: {
     fontSize: 14,
@@ -503,9 +583,11 @@ const styles = StyleSheet.create({
   },
   txRight: {
     alignItems: 'flex-end',
+    marginLeft: 8,
   },
   txAmount: {
     fontSize: 15,
+    fontWeight: '700',
   },
   syncBadge: {
     fontSize: 10,

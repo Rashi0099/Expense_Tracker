@@ -6,9 +6,13 @@ import { RootNavigator } from './navigation/RootNavigator';
 import { ScreenPrivacyShield } from '../components/common/ScreenPrivacyShield';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { hotUpdateService } from '../services/HotUpdateService';
+import { reminderService } from '../services/reminderService';
 
 export const App: React.FC = () => {
   useEffect(() => {
+    // Initialize 3x daily reminder alarms
+    reminderService.init().catch(() => {});
+
     // Silent background check for updates after startup
     const timer = setTimeout(async () => {
       try {

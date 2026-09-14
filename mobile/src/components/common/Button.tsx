@@ -123,7 +123,7 @@ export const Button: React.FC<ButtonProps> = ({
           backgroundColor: getBackgroundColor(),
           minHeight: getHeight(),
           paddingHorizontal: getPaddingHorizontal(),
-          borderRadius: theme.borderRadius.lg,
+          borderRadius: theme.borderRadius.pill,
           borderColor:
             variant === 'outline'
               ? isDisabled

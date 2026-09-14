@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Linking } from 'react-native';
+import { View, Text, Image, StyleSheet, Linking } from 'react-native';
 import {
   NavigationContainer,
   LinkingOptions,
@@ -113,7 +113,15 @@ export const RootNavigator: React.FC = () => {
   if (isLoading) {
     return (
       <View style={[styles.loading, { backgroundColor: theme.colors.background }]}>
-        <LoadingState message="Initializing SQLite..." />
+        <Image
+          source={require('../../assets/logo_round.png')}
+          style={styles.splashLogo}
+          resizeMode="contain"
+        />
+        <Text style={[styles.splashTitle, { color: theme.colors.textPrimary }]}>
+          Expense Tracker
+        </Text>
+        <LoadingState message="Initializing your financial space..." />
       </View>
     );
   }
@@ -176,5 +184,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 24,
+  },
+  splashLogo: {
+    width: 90,
+    height: 90,
+    marginBottom: 14,
+  },
+  splashTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 16,
+    letterSpacing: 0.5,
   },
 });

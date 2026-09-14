@@ -8,6 +8,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
 import { ENV } from '../../app/config/env';
 import { NotificationService, NotificationSettings } from '../../services/notificationService';
+import { reminderService } from '../../services/reminderService';
 import { hotUpdateService, UpdateCheckResult } from '../../services/HotUpdateService';
 import { HotUpdateModal } from '../../components/common/HotUpdateModal';
 
@@ -26,11 +27,14 @@ export const SettingsScreen: React.FC = () => {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
 
+  const [dailyRemindersEnabled, setDailyRemindersEnabled] = useState(true);
+
   useEffect(() => {
     async function loadNotifSettings() {
       const service = NotificationService.getInstance();
       await service.init();
       setNotifSettings(service.getSettings());
+      setDailyRemindersEnabled(reminderService.isDailyRemindersEnabled());
     }
     loadNotifSettings();
 
@@ -64,6 +68,21 @@ export const SettingsScreen: React.FC = () => {
       Alert.alert('Update Check Failed', 'Could not connect to the update server.');
     } finally {
       setIsCheckingUpdate(false);
+    }
+  };
+
+  const toggleDailyReminders = async () => {
+    const updated = !dailyRemindersEnabled;
+    setDailyRemindersEnabled(updated);
+    await reminderService.setDailyRemindersEnabled(updated);
+  };
+
+  const handleSendTestNotification = async () => {
+    const success = await reminderService.sendTestNotification('NIGHT');
+    if (success) {
+      Alert.alert('Notification Sent', 'Check your device notification tray!');
+    } else {
+      Alert.alert('Notification Info', 'Ensure notification permission is granted in device settings.');
     }
   };
 
@@ -263,6 +282,37 @@ export const SettingsScreen: React.FC = () => {
             accessibilityLabel="Toggle budget threshold warnings"
           />
         </View>
+
+        <View style={[styles.divider, { backgroundColor: theme.colors.surfaceBorder }]} />
+
+        <View style={styles.row}>
+          <View style={styles.notifTextContainer}>
+            <Text style={[styles.label, { color: theme.colors.textPrimary, fontWeight: '600' }]}>
+              Daily Expense Reminders
+            </Text>
+            <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted }]}>
+              Morning (9 AM), Afternoon (2 PM), & Night (9 PM) reminders
+            </Text>
+          </View>
+          <Switch
+            value={dailyRemindersEnabled}
+            onValueChange={toggleDailyReminders}
+            trackColor={{ false: theme.colors.surfaceBorder, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityRole="switch"
+            accessibilityLabel="Toggle 3x daily expense reminders"
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.testNotifButton, { borderColor: theme.colors.surfaceBorder }]}
+          onPress={handleSendTestNotification}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.testNotifText, { color: theme.colors.primary }]}>
+            🔔 Send Test Reminder Notification
+          </Text>
+        </TouchableOpacity>
       </Card>
 
 
@@ -405,5 +455,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     lineHeight: 15,
+  },
+  testNotifButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testNotifText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

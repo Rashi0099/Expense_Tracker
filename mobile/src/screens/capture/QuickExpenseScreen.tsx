@@ -14,12 +14,13 @@ import { MoneyInput } from '../../components/forms/MoneyInput';
 import { TextInput } from '../../components/forms/TextInput';
 import { Button } from '../../components/common/Button';
 import { createExpenseUseCase } from '../../domain/usecases/expenseUseCases';
+import { createIncomeUseCase } from '../../domain/usecases/incomeUseCases';
 import { listCategoriesUseCase } from '../../domain/usecases/categoryUseCases';
 import { suggestCategoryAsync } from '../../domain/rules/smartCategorySuggestion';
 import { SQLiteCategoryMemoryRepository } from '../../database/repositories/SQLiteCategoryMemoryRepository';
 import { CategoryModel, PaymentMethod } from '../../domain/models';
 import { dollarsToCents } from '../../utils/money';
-import { getTodayDateString } from '../../utils/date';
+import { getTodayDateString, formatDisplayDate } from '../../utils/date';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
 
@@ -38,24 +39,24 @@ export const QuickExpenseScreen: React.FC = () => {
 
   const memoryRepo = useMemo(() => new SQLiteCategoryMemoryRepository(), []);
 
+  const [transactionType, setTransactionType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [amount, setAmount] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [suggestedCategory, setSuggestedCategory] = useState<CategoryModel | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
   const [payee, setPayee] = useState('');
   const [note, setNote] = useState('');
-  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Load available categories from local SQLite
+  // Load available categories from local SQLite based on transactionType
   useEffect(() => {
     async function loadCategories() {
       try {
-        const list = await listCategoriesUseCase('EXPENSE');
+        const list = await listCategoriesUseCase(transactionType);
         setCategories(list);
         if (list.length > 0) {
           setSelectedCategoryId(list[0].id);
@@ -65,14 +66,22 @@ export const QuickExpenseScreen: React.FC = () => {
       }
     }
     loadCategories();
-  }, []);
+  }, [transactionType]);
+
+  // Quick-Add chip handler: +100, +500, +1,000, +5,000
+  const handleQuickAdd = (addVal: number) => {
+    const current = parseFloat(amount) || 0;
+    const next = current + addVal;
+    setAmount(next.toString());
+    if (error) setError(null);
+  };
 
   // Real-time deterministic category suggestion (learned memory -> default rules -> category name)
   useEffect(() => {
     let isMounted = true;
 
     async function checkSuggestion() {
-      if (categories.length > 0 && payee.trim().length >= 2) {
+      if (transactionType === 'EXPENSE' && categories.length > 0 && payee.trim().length >= 2) {
         const suggested = await suggestCategoryAsync({
           merchant: payee,
           categories,
@@ -97,7 +106,7 @@ export const QuickExpenseScreen: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [payee, categories, selectedCategoryId, user?.id, memoryRepo]);
+  }, [payee, categories, selectedCategoryId, user?.id, memoryRepo, transactionType]);
 
   const handleApplySuggestion = () => {
     if (suggestedCategory) {
@@ -113,7 +122,7 @@ export const QuickExpenseScreen: React.FC = () => {
       return null;
     }
     if (!selectedCategoryId) {
-      setError('Please select an expense category.');
+      setError(`Please select ${transactionType === 'EXPENSE' ? 'an expense' : 'an income'} category.`);
       return null;
     }
     return cents;
@@ -128,20 +137,30 @@ export const QuickExpenseScreen: React.FC = () => {
     setError(null);
 
     try {
-      // Local-first write: commits immediately to SQLite and queues in sync_outbox atomically
-      await createExpenseUseCase({
-        categoryId: selectedCategoryId,
-        amountCents: cents,
-        currency: user?.baseCurrency || 'USD',
-        transactionDate: getTodayDateString(),
-        paymentMethod,
-        payee: payee.trim() || undefined,
-        note: note.trim() || undefined,
-      });
+      if (transactionType === 'INCOME') {
+        await createIncomeUseCase({
+          categoryId: selectedCategoryId,
+          amountCents: cents,
+          currency: user?.baseCurrency || 'INR',
+          transactionDate: getTodayDateString(),
+          source: payee.trim() || 'Income',
+          note: note.trim() || undefined,
+        });
+      } else {
+        await createExpenseUseCase({
+          categoryId: selectedCategoryId,
+          amountCents: cents,
+          currency: user?.baseCurrency || 'INR',
+          transactionDate: getTodayDateString(),
+          paymentMethod,
+          payee: payee.trim() || undefined,
+          note: note.trim() || undefined,
+        });
 
-      // Update learned category memory for fast future capture
-      if (payee.trim() && user?.id) {
-        await memoryRepo.recordChoice(user.id, payee.trim(), selectedCategoryId);
+        // Update learned category memory for fast future capture
+        if (payee.trim() && user?.id) {
+          await memoryRepo.recordChoice(user.id, payee.trim(), selectedCategoryId);
+        }
       }
 
       setAmount('');
@@ -149,55 +168,7 @@ export const QuickExpenseScreen: React.FC = () => {
       setNote('');
       navigation.navigate('Home');
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Could not save expense locally.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Consecutive entry UX: saves instantly, flashes success, clears form, keeps numeric keypad open
-  const handleSaveAndAddAnother = async () => {
-    const cents = validateAndExtractCents();
-    if (cents === null) return;
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await createExpenseUseCase({
-        categoryId: selectedCategoryId,
-        amountCents: cents,
-        currency: user?.baseCurrency || 'USD',
-        transactionDate: getTodayDateString(),
-        paymentMethod,
-        payee: payee.trim() || undefined,
-        note: note.trim() || undefined,
-      });
-
-      if (payee.trim() && user?.id) {
-        await memoryRepo.recordChoice(user.id, payee.trim(), selectedCategoryId);
-      }
-
-      const formatted = (cents / 100).toFixed(2);
-      setSuccessMessage(`✓ Expense of $${formatted} saved! Ready for next.`);
-
-      // Reset fields for rapid consecutive entry
-      setAmount('');
-      setPayee('');
-      setNote('');
-      setSuggestedCategory(null);
-
-      // Keep focus on the amount input with numeric keyboard open
-      setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, 50);
-
-      // Dismiss success feedback banner after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 3000);
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Could not save expense locally.');
+      Alert.alert('Error', err?.message || 'Could not save transaction locally.');
     } finally {
       setIsSaving(false);
     }
@@ -230,58 +201,116 @@ export const QuickExpenseScreen: React.FC = () => {
         >
           <Text style={[styles.backArrow, { color: theme.colors.textPrimary }]}>‹</Text>
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-            Add Expense
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-            Log your expense
-          </Text>
-        </View>
+        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+          {transactionType === 'EXPENSE' ? 'Add Expense' : 'Add Income'}
+        </Text>
+        <View style={styles.headerRightPlaceholder} />
       </View>
 
-      {/* Primary Focus: Large Numeric Money Input */}
-      <MoneyInput
-        ref={amountInputRef}
-        label="Amount"
-        value={amount}
-        onChangeValue={(val) => {
-          setAmount(val);
-          if (error) setError(null);
-        }}
-        currency={user?.baseCurrency || 'INR'}
-        containerStyle={{
-          backgroundColor: `${theme.colors.primary}0D`,
-          borderColor: `${theme.colors.primary}20`,
-        }}
-        autoFocus
-        error={error || undefined}
-      />
-
-      {/* Instant Inline Feedback for Consecutive Saves */}
-      {successMessage && (
-        <View
+      {/* Segmented Pill Toggle: [ Expense ]  [ Income ] */}
+      <View style={[styles.toggleContainer, { backgroundColor: theme.colors.surfaceSubtle }]}>
+        <TouchableOpacity
+          onPress={() => setTransactionType('EXPENSE')}
+          activeOpacity={0.8}
           style={[
-            styles.successBanner,
-            { backgroundColor: `${theme.colors.income}20`, borderColor: theme.colors.income },
+            styles.toggleBtn,
+            transactionType === 'EXPENSE' && styles.toggleBtnExpenseActive,
           ]}
-          accessibilityRole="alert"
-          accessibilityLiveRegion="assertive"
         >
-          <Text style={[styles.successText, { color: theme.colors.income }]}>
-            {successMessage}
+          <Text
+            style={[
+              styles.toggleText,
+              {
+                color: transactionType === 'EXPENSE' ? '#E05D6A' : theme.colors.textSecondary,
+                fontWeight: transactionType === 'EXPENSE' ? '700' : '500',
+              },
+            ]}
+          >
+            Expense
           </Text>
-        </View>
-      )}
+        </TouchableOpacity>
 
-      {/* Smart Category Suggestion Banner */}
+        <TouchableOpacity
+          onPress={() => setTransactionType('INCOME')}
+          activeOpacity={0.8}
+          style={[
+            styles.toggleBtn,
+            transactionType === 'INCOME' && styles.toggleBtnIncomeActive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.toggleText,
+              {
+                color: transactionType === 'INCOME' ? '#16A085' : theme.colors.textSecondary,
+                fontWeight: transactionType === 'INCOME' ? '700' : '500',
+              },
+            ]}
+          >
+            Income
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Large Amount Display: ₹0 + Enter amount */}
+      <TouchableOpacity
+        style={[
+          styles.amountContainer,
+          error ? { borderColor: theme.colors.expense, borderWidth: 1 } : null,
+        ]}
+        activeOpacity={1}
+        onPress={() => amountInputRef.current?.focus()}
+      >
+        <Text style={[styles.amountDisplay, { color: theme.colors.textPrimary }]}>
+          ₹{amount || '0'}
+        </Text>
+        <Text style={[styles.amountSubtitle, { color: theme.colors.textSecondary }]}>
+          Enter amount
+        </Text>
+
+        {/* Real hidden numeric keyboard input */}
+        <RNTextInput
+          ref={amountInputRef}
+          value={amount}
+          onChangeText={(val) => {
+            const clean = val.replace(/[^0-9.]/g, '');
+            setAmount(clean);
+            if (error) setError(null);
+          }}
+          keyboardType="decimal-pad"
+          style={styles.hiddenInput}
+          autoFocus
+        />
+      </TouchableOpacity>
+
+      {/* Quick-Add Pills: + 100, + 500, + 1,000, + 5,000 */}
+      <View style={styles.quickAddRow}>
+        {[100, 500, 1000, 5000].map((val) => (
+          <TouchableOpacity
+            key={val}
+            onPress={() => handleQuickAdd(val)}
+            style={[
+              styles.quickAddPill,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.surfaceBorder,
+              },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.quickAddText, { color: theme.colors.textPrimary }]}>
+              + {val >= 1000 ? val.toLocaleString() : val}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Smart Category Suggestion Banner if detected */}
       {suggestedCategory && (
         <TouchableOpacity
           onPress={handleApplySuggestion}
           activeOpacity={0.8}
           style={[styles.suggestionBox, { backgroundColor: `${theme.colors.primary}15` }]}
-          accessibilityRole="button"
-          accessibilityLabel={`Apply suggested category ${suggestedCategory.name}`}
         >
           <Text style={[styles.suggestionText, { color: theme.colors.primary }]}>
             💡 Suggestion: {suggestedCategory.icon} {suggestedCategory.name}
@@ -292,26 +321,35 @@ export const QuickExpenseScreen: React.FC = () => {
 
       {/* Category Grid Section */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
             Category
           </Text>
-          {categories.length > 8 && (
-            <TouchableOpacity
-              onPress={() => setShowAllCategories((prev) => !prev)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={[styles.seeAllText, { color: theme.colors.textMuted }]}>
-                {showAllCategories ? 'Show less' : 'See all'}
-              </Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={() => setShowAllCategories((prev) => !prev)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.seeAllText, { color: theme.colors.textSecondary }]}>
+              {showAllCategories ? 'Show less' : 'Select category >'}
+            </Text>
+          </TouchableOpacity>
         </View>
+
         <View style={styles.categoryGrid}>
-          {displayedCategories.map((cat) => {
+          {displayedCategories.map((cat, idx) => {
             const isSelected = cat.id === selectedCategoryId;
-            const catColor = cat.color || theme.colors.primary;
+            const pastelBgs = [
+              '#FEF3C7', // Food
+              '#E0E7FF', // Transport
+              '#FCE7F3', // Shopping
+              '#D1FAE5', // Home
+              '#E0F2FE', // Bills
+              '#FEE2E2', // Health
+              '#EDE9FE', // Education
+              '#F3F4F6', // Others
+            ];
+            const tileBg = pastelBgs[idx % pastelBgs.length];
+
             return (
               <TouchableOpacity
                 key={cat.id}
@@ -329,26 +367,21 @@ export const QuickExpenseScreen: React.FC = () => {
               >
                 <View
                   style={[
-                    styles.categoryCircle,
+                    styles.categoryTile,
                     {
-                      backgroundColor: isSelected
-                        ? theme.colors.primary
-                        : `${catColor}15`,
-                      borderColor: isSelected
-                        ? theme.colors.primary
-                        : `${catColor}30`,
+                      backgroundColor: tileBg,
+                      borderColor: isSelected ? theme.colors.primary : 'transparent',
+                      borderWidth: isSelected ? 2.5 : 0,
                     },
                   ]}
                 >
-                  <Text style={styles.categoryCircleIcon}>{cat.icon}</Text>
+                  <Text style={styles.categoryTileEmoji}>{cat.icon}</Text>
                 </View>
                 <Text
                   style={[
-                    styles.categoryGridLabel,
+                    styles.categoryTileLabel,
                     {
-                      color: isSelected
-                        ? theme.colors.primary
-                        : theme.colors.textPrimary,
+                      color: isSelected ? theme.colors.primary : theme.colors.textPrimary,
                       fontWeight: isSelected ? '700' : '500',
                     },
                   ]}
@@ -362,112 +395,99 @@ export const QuickExpenseScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Payment Method Selector - 4 Compact Buttons (No Horizontal Scroll) */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-          Payment Method
-        </Text>
-        <View style={styles.paymentMethodRow}>
-          {QUICK_PAYMENT_METHODS.map((method) => {
-            const isSelected = method.value === paymentMethod;
-            return (
-              <TouchableOpacity
-                key={method.value}
-                onPress={() => setPaymentMethod(method.value)}
-                activeOpacity={0.7}
-                style={[
-                  styles.paymentMethodBtn,
-                  {
-                    backgroundColor: isSelected
-                      ? `${theme.colors.primary}12`
-                      : theme.colors.surface,
-                    borderColor: isSelected
-                      ? theme.colors.primary
-                      : theme.colors.surfaceBorder,
-                  },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Select payment method ${method.label}`}
-                accessibilityState={{ selected: isSelected }}
-              >
-                <Text
-                  style={[
-                    styles.paymentMethodText,
-                    {
-                      color: isSelected
-                        ? theme.colors.primary
-                        : theme.colors.textPrimary,
-                      fontWeight: isSelected ? '700' : '500',
-                    },
-                  ]}
-                >
-                  {method.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+      {/* Detail Selectors List (Date, Payment Method, Note) */}
+      <View style={styles.detailsListCard}>
+        {/* Date Row */}
+        <View style={[styles.detailRow, { borderBottomColor: theme.colors.surfaceBorder }]}>
+          <View style={styles.detailRowLeft}>
+            <Text style={styles.detailRowIcon}>📅</Text>
+            <Text style={[styles.detailRowLabel, { color: theme.colors.textPrimary }]}>Date</Text>
+          </View>
+          <Text style={[styles.detailRowValue, { color: theme.colors.textSecondary }]}>
+            {formatDisplayDate(getTodayDateString())} &gt;
+          </Text>
+        </View>
+
+        {/* Payment Method Selector */}
+        {transactionType === 'EXPENSE' && (
+          <View style={[styles.detailRow, { borderBottomColor: theme.colors.surfaceBorder }]}>
+            <View style={styles.detailRowLeft}>
+              <Text style={styles.detailRowIcon}>💳</Text>
+              <Text style={[styles.detailRowLabel, { color: theme.colors.textPrimary }]}>
+                Payment Method
+              </Text>
+            </View>
+            <View style={styles.methodChipsRow}>
+              {QUICK_PAYMENT_METHODS.map((method) => {
+                const isSelected = method.value === paymentMethod;
+                return (
+                  <TouchableOpacity
+                    key={method.value}
+                    onPress={() => setPaymentMethod(method.value)}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.methodChip,
+                      {
+                        backgroundColor: isSelected ? theme.colors.primary : theme.colors.surfaceSubtle,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.methodChipText,
+                        {
+                          color: isSelected ? '#FFFFFF' : theme.colors.textPrimary,
+                          fontWeight: isSelected ? '700' : '500',
+                        },
+                      ]}
+                    >
+                      {method.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Note / Payee Row */}
+        <View style={styles.detailRow}>
+          <View style={styles.detailRowLeft}>
+            <Text style={styles.detailRowIcon}>📝</Text>
+            <Text style={[styles.detailRowLabel, { color: theme.colors.textPrimary }]}>
+              {transactionType === 'EXPENSE' ? 'Add Note' : 'Source'}
+            </Text>
+          </View>
+          <RNTextInput
+            value={payee}
+            onChangeText={setPayee}
+            placeholder={transactionType === 'EXPENSE' ? 'Add a note (optional)' : 'e.g. Salary, Client'}
+            placeholderTextColor={theme.colors.textMuted}
+            style={[styles.noteInput, { color: theme.colors.textPrimary }]}
+          />
         </View>
       </View>
 
-      {/* Collapsible More Details (Optional) */}
-      <View style={styles.moreDetailsContainer}>
+      {/* Save Action Button matching uiii.png */}
+      <View style={styles.actionsContainer}>
         <TouchableOpacity
-          onPress={() => setShowMoreDetails((prev) => !prev)}
-          activeOpacity={0.7}
+          onPress={handleSave}
+          disabled={isSaving}
+          activeOpacity={0.8}
           style={[
-            styles.moreDetailsButton,
+            styles.savePillButton,
             {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.surfaceBorder,
+              backgroundColor: theme.colors.primary,
+              shadowColor: theme.colors.primary,
             },
           ]}
-          accessibilityRole="button"
-          accessibilityLabel="Toggle more details"
-          accessibilityState={{ expanded: showMoreDetails }}
         >
-          <View style={styles.moreDetailsLeft}>
-            <Text style={styles.moreDetailsIcon}>📝</Text>
-            <Text style={[styles.moreDetailsLabel, { color: theme.colors.textPrimary }]}>
-              More details{' '}
-              <Text style={[styles.moreDetailsOptional, { color: theme.colors.textMuted }]}>
-                (Optional)
-              </Text>
-            </Text>
-          </View>
-          <Text style={[styles.moreDetailsChevron, { color: theme.colors.textMuted }]}>
-            {showMoreDetails ? '▲' : '▼'}
+          <Text style={styles.savePillButtonText}>
+            {isSaving
+              ? 'Saving...'
+              : `Save ${transactionType === 'EXPENSE' ? 'Expense' : 'Income'}`}
           </Text>
         </TouchableOpacity>
-
-        {showMoreDetails && (
-          <View style={styles.detailsInputsWrapper}>
-            <TextInput
-              label="Payee / Merchant"
-              value={payee}
-              onChangeText={setPayee}
-              placeholder="e.g. Starbucks, Uber, Grocery Store"
-            />
-            <TextInput
-              label="Note (Optional)"
-              value={note}
-              onChangeText={setNote}
-              placeholder="e.g. Lunch with team"
-            />
-          </View>
-        )}
-      </View>
-
-      {/* Save Action Button */}
-      <View style={styles.actionsContainer}>
-        <Button
-          label="Save Expense"
-          variant="primary"
-          onPress={handleSave}
-          isLoading={isSaving}
-          size="lg"
-          style={styles.saveButton}
-          accessibilityLabel="Save expense and return to dashboard"
-        />
       </View>
     </Screen>
   );
@@ -480,54 +500,101 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingTop: 4,
   },
   backButton: {
     width: 36,
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
     marginLeft: -6,
   },
   backArrow: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '300',
-    lineHeight: 28,
+    lineHeight: 32,
   },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  subtitle: {
-    fontSize: 12,
-    marginTop: 1,
-  },
-  successBanner: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  successText: {
-    fontSize: 14,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  headerRightPlaceholder: {
+    width: 36,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    borderRadius: 24,
+    padding: 4,
+    marginBottom: 20,
+  },
+  toggleBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleBtnExpenseActive: {
+    backgroundColor: '#FDE8E9',
+  },
+  toggleBtnIncomeActive: {
+    backgroundColor: '#E8F8F5',
+  },
+  toggleText: {
+    fontSize: 14,
+  },
+  amountContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginBottom: 16,
+    borderRadius: 18,
+    position: 'relative',
+  },
+  amountDisplay: {
+    fontSize: 40,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  amountSubtitle: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  hiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0.01,
+  },
+  quickAddRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 22,
+  },
+  quickAddPill: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickAddText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   suggestionBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 48,
-    borderRadius: 12,
-    marginTop: 8,
+    paddingVertical: 10,
+    borderRadius: 14,
+    marginBottom: 16,
   },
   suggestionText: {
     fontSize: 13,
@@ -539,118 +606,112 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   section: {
-    marginTop: 18,
+    marginBottom: 20,
   },
-  sectionHeader: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
   seeAllText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 4,
     marginHorizontal: -4,
   },
   categoryGridItem: {
     width: '25%',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 2,
+    marginBottom: 14,
+    paddingHorizontal: 4,
   },
-  categoryCircle: {
+  categoryTile: {
     width: 52,
     height: 52,
-    borderRadius: 26,
-    borderWidth: 1.5,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
   },
-  categoryCircleIcon: {
+  categoryTileEmoji: {
     fontSize: 22,
   },
-  categoryGridLabel: {
+  categoryTileLabel: {
     fontSize: 11,
     textAlign: 'center',
-    maxWidth: '100%',
   },
-  paymentMethodRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+  detailsListCard: {
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    marginBottom: 24,
   },
-  paymentMethodBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  paymentMethodText: {
-    fontSize: 13,
-  },
-  moreDetailsContainer: {
-    marginTop: 18,
-  },
-  moreDetailsButton: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    height: 50,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
-  moreDetailsLeft: {
+  detailRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  moreDetailsIcon: {
+  detailRowIcon: {
     fontSize: 16,
   },
-  moreDetailsLabel: {
+  detailRowLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  detailRowValue: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '500',
   },
-  moreDetailsOptional: {
-    fontSize: 12,
-    fontWeight: '400',
+  methodChipsRow: {
+    flexDirection: 'row',
+    gap: 6,
   },
-  moreDetailsChevron: {
+  methodChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  methodChipText: {
     fontSize: 11,
   },
-  detailsInputsWrapper: {
-    marginTop: 12,
-    gap: 4,
+  noteInput: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 13,
+    paddingVertical: 2,
   },
   actionsContainer: {
-    marginTop: 24,
     marginBottom: 36,
-    gap: 10,
-    alignItems: 'center',
   },
-  saveButton: {
+  savePillButton: {
     width: '100%',
-    minHeight: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
   },
-  consecutiveLink: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  consecutiveLinkText: {
-    fontSize: 13,
-    fontWeight: '600',
+  savePillButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

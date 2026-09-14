@@ -11,7 +11,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, AppState, AppStateStatus } from 'react-native';
+import { View, Text, Image, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../theme/useTheme';
 
@@ -42,7 +42,10 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
       if (nextAppState === 'inactive' || nextAppState === 'background') {
         setIsShieldActive(true);
       } else if (nextAppState === 'active') {
-        setIsShieldActive(false);
+        // Smooth dismissal after app window settles
+        setTimeout(() => {
+          setIsShieldActive(false);
+        }, 150);
       }
     });
 
@@ -68,19 +71,16 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
               { backgroundColor: theme.colors.background },
             ]}
           >
-            <View
-              style={[
-                styles.iconBadge,
-                { backgroundColor: `${theme.colors.primary}15` },
-              ]}
-            >
-              <Text style={styles.icon}>🔒</Text>
-            </View>
+            <Image
+              source={require('../../assets/logo_round.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
               Expense Tracker
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-              Financial details protected
+              🔒 Financial details protected
             </Text>
           </View>
         )}
@@ -100,16 +100,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  iconBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 84,
+    height: 84,
     marginBottom: 16,
-  },
-  icon: {
-    fontSize: 36,
   },
   title: {
     fontSize: 22,
