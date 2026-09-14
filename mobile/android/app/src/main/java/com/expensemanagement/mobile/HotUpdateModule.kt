@@ -2,11 +2,13 @@ package com.expensemanagement.mobile
 
 import android.app.Activity
 import android.content.Intent
+import com.facebook.react.ReactApplication
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import java.io.BufferedInputStream
@@ -72,9 +74,10 @@ class HotUpdateModule(private val reactContext: ReactApplicationContext) :
             var outputStream: FileOutputStream? = null
 
             val otaDir = getOtaDir()
-            val tempFile = File(otaDir, "temp_bundle.js")
-            val targetFile = File(otaDir, "index.android.bundle")
+            val tempFile = File(otaDir, "temp_${System.currentTimeMillis()}.bundle")
             val versionFile = File(otaDir, "version.txt")
+            val versionedFile = File(otaDir, "bundle_$targetVersion.bundle")
+            val legacyFile = File(otaDir, "index.android.bundle")
 
             try {
                 if (tempFile.exists()) {
@@ -130,19 +133,37 @@ class HotUpdateModule(private val reactContext: ReactApplicationContext) :
                     throw Exception("Downloaded bundle is empty")
                 }
 
-                // Atomic rename to production bundle file
-                if (targetFile.exists()) {
-                    targetFile.delete()
+                // 1. Save versioned bundle file (safe from file lock collisions)
+                if (versionedFile.exists()) {
+                    versionedFile.delete()
                 }
-                val renamed = tempFile.renameTo(targetFile)
-                if (!renamed) {
-                    // Fallback copy if rename fails
-                    tempFile.copyTo(targetFile, overwrite = true)
-                    tempFile.delete()
+                tempFile.copyTo(versionedFile, overwrite = true)
+
+                // 2. Also update index.android.bundle safely for backwards compatibility
+                try {
+                    val trash = File(otaDir, "trash_${System.currentTimeMillis()}")
+                    if (legacyFile.exists()) {
+                        legacyFile.renameTo(trash)
+                        trash.delete()
+                    }
+                    tempFile.copyTo(legacyFile, overwrite = true)
+                } catch (_: Exception) {
+                    // Ignored if legacy file is locked, versionedFile is primary
                 }
 
-                // Record active OTA version
+                tempFile.delete()
+
+                // 3. Write active version manifest
                 versionFile.writeText(targetVersion)
+
+                // 4. Cleanup older versioned bundles
+                try {
+                    otaDir.listFiles()?.forEach { f ->
+                        if (f.isFile && f.name.startsWith("bundle_") && f.name.endsWith(".bundle") && f.name != versionedFile.name) {
+                            f.delete()
+                        }
+                    }
+                } catch (_: Exception) {}
 
                 val completeParams = Arguments.createMap().apply {
                     putBoolean("success", true)
@@ -170,21 +191,32 @@ class HotUpdateModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun reloadApp() {
         val activity: Activity? = currentActivity
-        if (activity == null) {
-            return
-        }
 
-        activity.runOnUiThread {
+        UiThreadUtil.runOnUiThread {
             try {
-                val launchIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
-                if (launchIntent != null) {
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    activity.startActivity(launchIntent)
-                    activity.finish()
-                    Runtime.getRuntime().exit(0)
+                val reactApplication = reactContext.applicationContext as? ReactApplication
+                val instanceManager = reactApplication?.reactNativeHost?.reactInstanceManager
+
+                if (instanceManager != null) {
+                    instanceManager.recreateReactContextInBackground()
+                } else if (activity != null) {
+                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+                    if (launchIntent != null) {
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        activity.startActivity(launchIntent)
+                        activity.finish()
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+                if (activity != null) {
+                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+                    if (launchIntent != null) {
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        activity.startActivity(launchIntent)
+                        activity.finish()
+                    }
+                }
             }
         }
     }

@@ -24,7 +24,16 @@ class MainApplication : Application(), ReactApplication {
         }
 
         override fun getJSBundleFile(): String? {
-          val otaBundle = File(applicationContext.filesDir, "ota_bundle/index.android.bundle")
+          val otaDir = File(applicationContext.filesDir, "ota_bundle")
+          val versionFile = File(otaDir, "version.txt")
+          if (versionFile.exists() && versionFile.isFile) {
+            val version = versionFile.readText().trim()
+            val versionedBundle = File(otaDir, "bundle_$version.bundle")
+            if (versionedBundle.exists() && versionedBundle.isFile && versionedBundle.length() > 0) {
+              return versionedBundle.absolutePath
+            }
+          }
+          val otaBundle = File(otaDir, "index.android.bundle")
           if (otaBundle.exists() && otaBundle.isFile && otaBundle.length() > 0) {
             return otaBundle.absolutePath
           }

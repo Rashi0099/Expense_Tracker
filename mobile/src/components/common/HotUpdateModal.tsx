@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -27,6 +27,17 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
   const [isCompleted, setIsCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Always reset state cleanly whenever modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      setIsDownloading(false);
+      setPercentage(0);
+      setBytesText('');
+      setIsCompleted(false);
+      setErrorMessage(null);
+    }
+  }, [visible]);
+
   if (!visible || !updateInfo || !updateInfo.isAvailable) {
     return null;
   }
@@ -35,7 +46,9 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
     if (!updateInfo.bundleUrl || !updateInfo.latestVersion) return;
 
     setIsDownloading(true);
+    setIsCompleted(false);
     setPercentage(0);
+    setBytesText('');
     setErrorMessage(null);
 
     try {
@@ -53,13 +66,11 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
       );
 
       if (success) {
+        setIsDownloading(false);
         setIsCompleted(true);
         setPercentage(100);
-        setTimeout(() => {
-          hotUpdateService.reloadApp();
-        }, 1200);
       } else {
-        setErrorMessage('Failed to download update. Please try again.');
+        setErrorMessage('Failed to download update. Please check connection and try again.');
         setIsDownloading(false);
       }
     } catch (err: unknown) {
@@ -67,6 +78,11 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
       setErrorMessage(msg);
       setIsDownloading(false);
     }
+  };
+
+  const handleApplyAndRestart = () => {
+    onDismiss();
+    hotUpdateService.reloadApp();
   };
 
   return (
@@ -80,43 +96,78 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
         <View style={styles.card}>
           {/* Header Badge */}
           <View style={styles.header}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>UPDATE AVAILABLE</Text>
+            <View
+              style={[
+                styles.badge,
+                isCompleted && { backgroundColor: '#ECFDF5' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  isCompleted && { color: '#059669' },
+                ]}
+              >
+                {isCompleted ? 'UPDATE READY' : 'UPDATE AVAILABLE'}
+              </Text>
             </View>
             <Text style={styles.versionText}>v{updateInfo.latestVersion}</Text>
           </View>
 
           {/* Title */}
           <Text style={styles.title}>
-            {isCompleted ? 'Update Complete! 🎉' : isDownloading ? 'Downloading Update...' : 'Ready to Update! 🚀'}
+            {isCompleted
+              ? 'Update Downloaded'
+              : isDownloading
+              ? 'Downloading Update...'
+              : 'Ready to Update'}
           </Text>
 
           {/* Description / Notes */}
           <Text style={styles.description}>
             {isCompleted
-              ? 'Restarting application with the newest features...'
-              : updateInfo.releaseNotes || 'A new seamless update is available with performance improvements.'}
+              ? `Version v${updateInfo.latestVersion} is downloaded and verified. Restart the app now to apply the newest features.`
+              : updateInfo.releaseNotes || 'A new update is available with performance improvements.'}
           </Text>
 
-          {/* Download Progress Bar */}
-          {isDownloading && (
+          {/* Download / Completed Progress Bar */}
+          {(isDownloading || isCompleted) && (
             <View style={styles.progressContainer}>
               <View style={styles.progressBarTrack}>
-                <View style={[styles.progressBarFill, { width: `${percentage}%` }]} />
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width: `${percentage}%`,
+                      backgroundColor: isCompleted ? '#10B981' : colors.light.primary,
+                    },
+                  ]}
+                />
               </View>
               <View style={styles.progressMeta}>
-                <Text style={styles.progressPercent}>{percentage}%</Text>
-                {bytesText ? <Text style={styles.progressBytes}>{bytesText}</Text> : null}
+                <Text
+                  style={[
+                    styles.progressPercent,
+                    isCompleted && { color: '#059669' },
+                  ]}
+                >
+                  {isCompleted ? '✓ 100% Downloaded' : `${percentage}%`}
+                </Text>
+                {bytesText && !isCompleted ? (
+                  <Text style={styles.progressBytes}>{bytesText}</Text>
+                ) : null}
               </View>
             </View>
           )}
 
           {/* Error message */}
           {errorMessage && (
-            <Text style={styles.errorText}>{errorMessage}</Text>
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
           )}
 
-          {/* Actions */}
+          {/* Initial State Actions */}
           {!isDownloading && !isCompleted && (
             <View style={styles.actions}>
               <TouchableOpacity
@@ -131,15 +182,38 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
                 onPress={handleStartUpdate}
                 activeOpacity={0.8}
               >
-                <Text style={styles.updateButtonText}>Update Now</Text>
+                <Text style={styles.updateButtonText}>
+                  {errorMessage ? 'Try Again' : 'Update Now'}
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {isDownloading && !isCompleted && (
+          {/* Downloading in Progress State */}
+          {isDownloading && (
             <View style={styles.downloadingState}>
               <ActivityIndicator size="small" color={colors.light.primary} />
-              <Text style={styles.downloadingText}>Please wait, updating in-app...</Text>
+              <Text style={styles.downloadingText}>Downloading update, please wait...</Text>
+            </View>
+          )}
+
+          {/* Completed State: Clear "Done / Restart App" Action */}
+          {isCompleted && (
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={styles.laterButton}
+                onPress={onDismiss}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.laterButtonText}>Later</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.doneButton}
+                onPress={handleApplyAndRestart}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.doneButtonText}>Done — Restart App</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -214,7 +288,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: colors.light.primary,
     borderRadius: 5,
   },
   progressMeta: {
@@ -232,11 +305,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
   },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 14,
+  },
   errorText: {
     fontSize: 12,
     color: '#EF4444',
-    marginBottom: 12,
     textAlign: 'center',
+    fontWeight: '500',
   },
   actions: {
     flexDirection: 'row',
@@ -269,12 +350,30 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  doneButton: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  doneButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   downloadingState: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   downloadingText: {
     fontSize: 13,

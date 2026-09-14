@@ -424,7 +424,11 @@ export const SettingsScreen: React.FC = () => {
       <HotUpdateModal
         visible={showUpdateModal}
         updateInfo={updateInfo}
-        onDismiss={() => setShowUpdateModal(false)}
+        onDismiss={async () => {
+          setShowUpdateModal(false);
+          const ver = await hotUpdateService.getCurrentVersion();
+          setAppVersion(ver);
+        }}
       />
     </Screen>
   );
