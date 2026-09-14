@@ -80,9 +80,17 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
     }
   };
 
+  const [isRestarting, setIsRestarting] = useState(false);
+
   const handleApplyAndRestart = () => {
-    onDismiss();
-    hotUpdateService.reloadApp();
+    setIsRestarting(true);
+    // Close the modal first, then wait 400ms for animation to finish before killing the process
+    setTimeout(() => {
+      onDismiss();
+      setTimeout(() => {
+        hotUpdateService.reloadApp();
+      }, 400);
+    }, 100);
   };
 
   return (
@@ -200,19 +208,28 @@ export const HotUpdateModal: React.FC<HotUpdateModalProps> = ({
           {/* Completed State: Clear "Done / Restart App" Action */}
           {isCompleted && (
             <View style={styles.actions}>
+              {!isRestarting && (
+                <TouchableOpacity
+                  style={styles.laterButton}
+                  onPress={onDismiss}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.laterButtonText}>Later</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={styles.laterButton}
-                onPress={onDismiss}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.laterButtonText}>Later</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.doneButton}
-                onPress={handleApplyAndRestart}
+                style={[styles.doneButton, isRestarting && { opacity: 0.85 }]}
+                onPress={!isRestarting ? handleApplyAndRestart : undefined}
                 activeOpacity={0.8}
               >
-                <Text style={styles.doneButtonText}>Done — Restart App</Text>
+                {isRestarting ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text style={styles.doneButtonText}>Restarting App...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.doneButtonText}>✓ Restart Now</Text>
+                )}
               </TouchableOpacity>
             </View>
           )}

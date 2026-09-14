@@ -194,29 +194,39 @@ class HotUpdateModule(private val reactContext: ReactApplicationContext) :
 
         UiThreadUtil.runOnUiThread {
             try {
-                val reactApplication = reactContext.applicationContext as? ReactApplication
-                val instanceManager = reactApplication?.reactNativeHost?.reactInstanceManager
-
-                if (instanceManager != null) {
-                    instanceManager.recreateReactContextInBackground()
-                } else if (activity != null) {
-                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+                if (activity != null) {
+                    // Full process-level restart: kills the current task and relaunches from scratch.
+                    // This ensures getJSBundleFile() is called again and the new OTA bundle is picked up.
+                    val packageName = activity.packageName
+                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(packageName)
                     if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        launchIntent.addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        )
                         activity.startActivity(launchIntent)
-                        activity.finish()
+                        // Finish all activities in the stack so the process restarts cleanly
+                        activity.finishAffinity()
+                        // Kill the current process after a tiny delay so the new intent is queued
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            android.os.Process.killProcess(android.os.Process.myPid())
+                        }, 300)
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                if (activity != null) {
-                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
-                    if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                        activity.startActivity(launchIntent)
-                        activity.finish()
+                // Last-resort fallback: just finish and relaunch
+                try {
+                    activity?.let {
+                        val intent = it.packageManager.getLaunchIntentForPackage(it.packageName)
+                        if (intent != null) {
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            it.startActivity(intent)
+                            it.finishAffinity()
+                        }
                     }
-                }
+                } catch (_: Exception) {}
             }
         }
     }
