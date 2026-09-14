@@ -15,6 +15,8 @@ export interface MoneyInputProps {
   currency?: string;
   autoFocus?: boolean;
   style?: ViewStyle;
+  containerStyle?: ViewStyle;
+  label?: string;
   error?: string;
 }
 
@@ -24,6 +26,8 @@ export const MoneyInput = forwardRef<TextInput, MoneyInputProps>(({
   currency = 'USD',
   autoFocus = true,
   style,
+  containerStyle,
+  label,
   error,
 }, ref) => {
   const { theme } = useTheme();
@@ -68,45 +72,53 @@ export const MoneyInput = forwardRef<TextInput, MoneyInputProps>(({
               : theme.colors.surfaceBorder,
             borderRadius: theme.borderRadius.xl,
           },
+          containerStyle,
         ]}
       >
-        <Text
-          style={[
-            styles.currencySymbol,
-            { color: theme.colors.primary },
-          ]}
-        >
-          {currencySymbol}
-        </Text>
-        <TextInput
-          ref={ref}
-          value={value}
-          onChangeText={handleChangeText}
-          keyboardType="decimal-pad"
-          autoFocus={autoFocus}
-          placeholder="0.00"
-          placeholderTextColor={theme.colors.textMuted}
-          style={[
-            styles.input,
-            {
-              color: theme.colors.textPrimary,
-            },
-          ]}
-          maxLength={10}
-          accessibilityLabel={`Amount in ${currency}`}
-        />
-        {value.length > 0 && (
-          <TouchableOpacity
-            onPress={handleClear}
-            style={styles.clearButton}
-            accessibilityLabel="Clear amount"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.clearText, { color: theme.colors.textMuted }]}>
-              ✕
-            </Text>
-          </TouchableOpacity>
+        {label && (
+          <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+            {label}
+          </Text>
         )}
+        <View style={styles.inputRow}>
+          <Text
+            style={[
+              styles.currencySymbol,
+              { color: theme.colors.primary },
+            ]}
+          >
+            {currencySymbol}
+          </Text>
+          <TextInput
+            ref={ref}
+            value={value}
+            onChangeText={handleChangeText}
+            keyboardType="decimal-pad"
+            autoFocus={autoFocus}
+            placeholder="0.00"
+            placeholderTextColor={theme.colors.textMuted}
+            style={[
+              styles.input,
+              {
+                color: theme.colors.textPrimary,
+              },
+            ]}
+            maxLength={10}
+            accessibilityLabel={`Amount in ${currency}`}
+          />
+          {value.length > 0 && (
+            <TouchableOpacity
+              onPress={handleClear}
+              style={styles.clearButton}
+              accessibilityLabel="Clear amount"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.clearText, { color: theme.colors.textMuted }]}>
+                ✕
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       {error && (
         <Text style={[styles.error, { color: theme.colors.expense }]}>
@@ -124,11 +136,18 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1.5,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   currencySymbol: {
     fontSize: 32,
@@ -142,11 +161,11 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   clearButton: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
+    borderRadius: 22,
   },
   clearText: {
     fontSize: 16,

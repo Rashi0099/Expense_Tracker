@@ -22,7 +22,13 @@ import { dollarsToCents } from '../../utils/money';
 import { getTodayDateString } from '../../utils/date';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
-import { PAYMENT_METHODS } from '../../app/config/constants';
+
+const QUICK_PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
+  { label: 'Cash', value: 'CASH' },
+  { label: 'UPI', value: 'UPI' },
+  { label: 'Debit', value: 'DEBIT_CARD' },
+  { label: 'Credit', value: 'CREDIT_CARD' },
+];
 
 export const QuickExpenseScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -39,6 +45,8 @@ export const QuickExpenseScreen: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
   const [payee, setPayee] = useState('');
   const [note, setNote] = useState('');
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -195,27 +203,57 @@ export const QuickExpenseScreen: React.FC = () => {
     }
   };
 
+  const displayedCategories = useMemo(() => {
+    if (showAllCategories || categories.length <= 8) {
+      return categories;
+    }
+    const first8 = categories.slice(0, 8);
+    if (selectedCategoryId && !first8.some((c) => c.id === selectedCategoryId)) {
+      const selected = categories.find((c) => c.id === selectedCategoryId);
+      if (selected) {
+        return [...first8.slice(0, 7), selected];
+      }
+    }
+    return first8;
+  }, [categories, showAllCategories, selectedCategoryId]);
+
   return (
     <Screen scrollable contentContainerStyle={styles.container}>
       {/* Screen Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-          Quick Expense
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-          Fast 2–5s entry • Saved locally to SQLite
-        </Text>
+        <TouchableOpacity
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
+          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Text style={[styles.backArrow, { color: theme.colors.textPrimary }]}>‹</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+            Add Expense
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+            Log your expense
+          </Text>
+        </View>
       </View>
 
       {/* Primary Focus: Large Numeric Money Input */}
       <MoneyInput
         ref={amountInputRef}
+        label="Amount"
         value={amount}
         onChangeValue={(val) => {
           setAmount(val);
           if (error) setError(null);
         }}
-        currency={user?.baseCurrency || 'USD'}
+        currency={user?.baseCurrency || 'INR'}
+        containerStyle={{
+          backgroundColor: `${theme.colors.primary}0D`,
+          borderColor: `${theme.colors.primary}20`,
+        }}
         autoFocus
         error={error || undefined}
       />
@@ -254,11 +292,24 @@ export const QuickExpenseScreen: React.FC = () => {
 
       {/* Category Grid Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-          Category
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+            Category
+          </Text>
+          {categories.length > 8 && (
+            <TouchableOpacity
+              onPress={() => setShowAllCategories((prev) => !prev)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.seeAllText, { color: theme.colors.textMuted }]}>
+                {showAllCategories ? 'Show less' : 'See all'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.categoryGrid}>
-          {categories.map((cat) => {
+          {displayedCategories.map((cat) => {
             const isSelected = cat.id === selectedCategoryId;
             const catColor = cat.color || theme.colors.primary;
             return (
@@ -282,10 +333,10 @@ export const QuickExpenseScreen: React.FC = () => {
                     {
                       backgroundColor: isSelected
                         ? theme.colors.primary
-                        : `${catColor}18`,
+                        : `${catColor}15`,
                       borderColor: isSelected
                         ? theme.colors.primary
-                        : `${catColor}35`,
+                        : `${catColor}30`,
                     },
                   ]}
                 >
@@ -311,28 +362,24 @@ export const QuickExpenseScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Payment Method Selector Chips */}
+      {/* Payment Method Selector - 4 Compact Buttons (No Horizontal Scroll) */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
           Payment Method
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsContainer}
-        >
-          {PAYMENT_METHODS.map((method) => {
+        <View style={styles.paymentMethodRow}>
+          {QUICK_PAYMENT_METHODS.map((method) => {
             const isSelected = method.value === paymentMethod;
             return (
               <TouchableOpacity
                 key={method.value}
-                onPress={() => setPaymentMethod(method.value as PaymentMethod)}
+                onPress={() => setPaymentMethod(method.value)}
                 activeOpacity={0.7}
                 style={[
-                  styles.methodChip,
+                  styles.paymentMethodBtn,
                   {
                     backgroundColor: isSelected
-                      ? theme.colors.primaryLight
+                      ? `${theme.colors.primary}12`
                       : theme.colors.surface,
                     borderColor: isSelected
                       ? theme.colors.primary
@@ -345,11 +392,12 @@ export const QuickExpenseScreen: React.FC = () => {
               >
                 <Text
                   style={[
-                    styles.methodLabel,
+                    styles.paymentMethodText,
                     {
                       color: isSelected
                         ? theme.colors.primary
-                        : theme.colors.textSecondary,
+                        : theme.colors.textPrimary,
+                      fontWeight: isSelected ? '700' : '500',
                     },
                   ]}
                 >
@@ -358,37 +406,59 @@ export const QuickExpenseScreen: React.FC = () => {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
 
-      {/* Payee & Note */}
-      <View style={styles.detailsSection}>
-        <TextInput
-          label="Payee / Merchant"
-          value={payee}
-          onChangeText={setPayee}
-          placeholder="e.g. Starbucks, Uber, Grocery Store"
-        />
+      {/* Collapsible More Details (Optional) */}
+      <View style={styles.moreDetailsContainer}>
+        <TouchableOpacity
+          onPress={() => setShowMoreDetails((prev) => !prev)}
+          activeOpacity={0.7}
+          style={[
+            styles.moreDetailsButton,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.surfaceBorder,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle more details"
+          accessibilityState={{ expanded: showMoreDetails }}
+        >
+          <View style={styles.moreDetailsLeft}>
+            <Text style={styles.moreDetailsIcon}>📝</Text>
+            <Text style={[styles.moreDetailsLabel, { color: theme.colors.textPrimary }]}>
+              More details{' '}
+              <Text style={[styles.moreDetailsOptional, { color: theme.colors.textMuted }]}>
+                (Optional)
+              </Text>
+            </Text>
+          </View>
+          <Text style={[styles.moreDetailsChevron, { color: theme.colors.textMuted }]}>
+            {showMoreDetails ? '▲' : '▼'}
+          </Text>
+        </TouchableOpacity>
 
-        <TextInput
-          label="Note (Optional)"
-          value={note}
-          onChangeText={setNote}
-          placeholder="e.g. Lunch with team"
-        />
+        {showMoreDetails && (
+          <View style={styles.detailsInputsWrapper}>
+            <TextInput
+              label="Payee / Merchant"
+              value={payee}
+              onChangeText={setPayee}
+              placeholder="e.g. Starbucks, Uber, Grocery Store"
+            />
+            <TextInput
+              label="Note (Optional)"
+              value={note}
+              onChangeText={setNote}
+              placeholder="e.g. Lunch with team"
+            />
+          </View>
+        )}
       </View>
 
-      {/* Save Action Buttons: Consecutive Entry + Standard Save */}
+      {/* Save Action Buttons */}
       <View style={styles.actionsContainer}>
-        <Button
-          label="Save & Add Another"
-          variant="outline"
-          onPress={handleSaveAndAddAnother}
-          isLoading={isSaving}
-          size="lg"
-          style={styles.consecutiveButton}
-          accessibilityLabel="Save expense and add another immediately"
-        />
         <Button
           label="Save Expense"
           variant="primary"
@@ -398,6 +468,17 @@ export const QuickExpenseScreen: React.FC = () => {
           style={styles.saveButton}
           accessibilityLabel="Save expense and return to dashboard"
         />
+        <TouchableOpacity
+          onPress={handleSaveAndAddAnother}
+          disabled={isSaving}
+          style={styles.consecutiveLink}
+          accessibilityRole="button"
+          accessibilityLabel="Save expense and add another immediately"
+        >
+          <Text style={[styles.consecutiveLinkText, { color: theme.colors.primary }]}>
+            + Save & Add Another
+          </Text>
+        </TouchableOpacity>
       </View>
     </Screen>
   );
@@ -408,15 +489,33 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    marginLeft: -6,
+  },
+  backArrow: {
+    fontSize: 28,
+    fontWeight: '300',
+    lineHeight: 28,
+  },
+  headerTitleContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
   },
   subtitle: {
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 1,
   },
   successBanner: {
     paddingHorizontal: 16,
@@ -451,29 +550,32 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   section: {
-    marginTop: 16,
+    marginTop: 18,
   },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  chipsContainer: {
-    paddingRight: 16,
-    gap: 8,
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  seeAllText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
+    marginTop: 4,
     marginHorizontal: -4,
   },
   categoryGridItem: {
     width: '25%',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
     paddingHorizontal: 2,
   },
   categoryCircle: {
@@ -493,31 +595,73 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: '100%',
   },
-  methodChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 48,
+  paymentMethodRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  paymentMethodBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
+  },
+  paymentMethodText: {
+    fontSize: 13,
+  },
+  moreDetailsContainer: {
+    marginTop: 18,
+  },
+  moreDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 50,
+    borderRadius: 14,
     borderWidth: 1,
   },
-  methodLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  moreDetailsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  detailsSection: {
-    marginTop: 16,
+  moreDetailsIcon: {
+    fontSize: 16,
+  },
+  moreDetailsLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  moreDetailsOptional: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  moreDetailsChevron: {
+    fontSize: 11,
+  },
+  detailsInputsWrapper: {
+    marginTop: 12,
+    gap: 4,
   },
   actionsContainer: {
     marginTop: 24,
     marginBottom: 36,
-    gap: 12,
-  },
-  consecutiveButton: {
-    minHeight: 52,
+    gap: 10,
+    alignItems: 'center',
   },
   saveButton: {
+    width: '100%',
     minHeight: 52,
+  },
+  consecutiveLink: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  consecutiveLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
