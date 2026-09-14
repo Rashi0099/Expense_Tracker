@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import {
   getCashflowMetricsUseCase,
@@ -89,6 +91,8 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
   const { isDark } = useTheme();
   const [selectedFilter, setSelectedFilter] = useState<DashboardFilter>('THIS_MONTH');
   const [showDropdown, setShowDropdown] = useState(false);
+  const pillRef = useRef<View>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 120, right: 16 });
   const [metrics, setMetrics] = useState<CashflowMetrics>({
     netBalanceCents: 0,
     totalIncomeCents: 0,
@@ -121,10 +125,26 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
     };
   }, [fetchMetrics, selectedFilter]);
 
+  const handleOpenDropdown = () => {
+    if (pillRef.current && (pillRef.current as any).measureInWindow) {
+      (pillRef.current as any).measureInWindow((x: number, y: number, width: number, height: number) => {
+        if (y && !isNaN(y)) {
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            top: y + height + 6,
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setShowDropdown(true);
+      });
+    } else {
+      setShowDropdown(true);
+    }
+  };
+
   const handleSelectFilter = (filter: DashboardFilter) => {
     setSelectedFilter(filter);
     setShowDropdown(false);
-    fetchMetrics(filter);
     if (onFilterChange) {
       onFilterChange(filter);
     }
@@ -212,10 +232,10 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
         </View>
 
         {/* Right: Fast Inline Filter Dropdown */}
-        <View style={styles.filterPillWrapper}>
+        <View ref={pillRef} collapsable={false} style={styles.filterPillWrapper}>
           <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setShowDropdown((prev) => !prev)}
+            activeOpacity={0.6}
+            onPress={handleOpenDropdown}
             style={[
               styles.filterPill,
               {
@@ -245,18 +265,25 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
             </Text>
           </TouchableOpacity>
 
-          {/* Fast Floating Dropdown Menu */}
-          {showDropdown && (
-            <>
-              <TouchableOpacity
-                style={styles.dropdownBackdrop}
-                activeOpacity={1}
-                onPress={() => setShowDropdown(false)}
-              />
+          {/* Zero-Delay Native Modal Dropdown Menu */}
+          <Modal
+            transparent
+            visible={showDropdown}
+            animationType="none"
+            onRequestClose={() => setShowDropdown(false)}
+            statusBarTranslucent
+          >
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => setShowDropdown(false)}
+            >
               <View
                 style={[
                   styles.dropdownMenu,
                   {
+                    top: dropdownPos.top,
+                    right: dropdownPos.right,
                     backgroundColor: isDark ? '#1B2138' : '#FFFFFF',
                     borderColor: isDark ? '#2D385A' : '#E2E8F0',
                     shadowOpacity: isDark ? 0.45 : 0.12,
@@ -269,7 +296,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                     <TouchableOpacity
                       key={opt.value}
                       onPress={() => handleSelectFilter(opt.value)}
-                      activeOpacity={0.7}
+                      activeOpacity={0.6}
                       style={[
                         styles.dropdownItem,
                         isSelected && {
@@ -296,8 +323,8 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                   );
                 })}
               </View>
-            </>
-          )}
+            </TouchableOpacity>
+          </Modal>
         </View>
       </View>
 
@@ -472,28 +499,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  dropdownBackdrop: {
-    position: 'absolute',
-    top: -500,
-    bottom: -800,
-    left: -500,
-    right: -500,
-    zIndex: 998,
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   dropdownMenu: {
     position: 'absolute',
-    top: 34,
-    right: 0,
-    width: 125,
-    borderRadius: 12,
+    width: 140,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    zIndex: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 5,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 16,
   },
   dropdownItem: {
     flexDirection: 'row',

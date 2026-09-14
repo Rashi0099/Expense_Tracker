@@ -17,5 +17,5 @@ export const ENV = {
   SYNC_INTERVAL_SECONDS: 30,
   CLIENT_VERSION: '1.0.0',
   PLATFORM: Platform.OS === 'android' ? 'ANDROID' : Platform.OS === 'ios' ? 'IOS' : 'WEB',
-  TIMEOUT_MS: 10000,
+  TIMEOUT_MS: 5000,
 } as const;

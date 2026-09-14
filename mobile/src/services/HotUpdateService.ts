@@ -1,6 +1,7 @@
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import axios from 'axios';
 import { ENV } from '../app/config/env';
+import { NetworkStateManager } from '../sync/network/NetworkState';
 
 const { HotUpdateModule } = NativeModules;
 
@@ -67,10 +68,14 @@ class HotUpdateService {
       return { isAvailable: false, currentVersion };
     }
 
+    if (!NetworkStateManager.getInstance().isOnline()) {
+      return { isAvailable: false, currentVersion };
+    }
+
     try {
       const manifestUrl = `${ENV.API_BASE_URL.replace('/api/v1', '')}/ota/version.json`;
       const response = await axios.get<OtaVersionInfo>(manifestUrl, {
-        timeout: 8000,
+        timeout: 4000,
         headers: { 'Cache-Control': 'no-cache' },
       });
 

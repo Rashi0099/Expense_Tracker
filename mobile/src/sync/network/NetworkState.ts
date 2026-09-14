@@ -38,6 +38,21 @@ export class NetworkStateManager {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const NetInfo = require('@react-native-community/netinfo');
+      if (typeof NetInfo.fetch === 'function') {
+        NetInfo.fetch()
+          .then((state: any) => {
+            if (state) {
+              this.currentStatus = {
+                isConnected: state.isConnected ?? true,
+                isInternetReachable: state.isInternetReachable ?? true,
+                type: state.type ?? 'unknown',
+              };
+              this.notify();
+            }
+          })
+          .catch(() => {});
+      }
+
       this.unsubscribeNetInfo = NetInfo.addEventListener((state: any) => {
         this.currentStatus = {
           isConnected: state.isConnected ?? true,
@@ -48,6 +63,26 @@ export class NetworkStateManager {
       });
     } catch {
       // In non-native test environments, defaults to connected
+    }
+  }
+
+  async checkIsOnline(): Promise<boolean> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const NetInfo = require('@react-native-community/netinfo');
+      if (typeof NetInfo.fetch === 'function') {
+        const state = await NetInfo.fetch();
+        if (state) {
+          this.currentStatus = {
+            isConnected: state.isConnected ?? true,
+            isInternetReachable: state.isInternetReachable ?? true,
+            type: state.type ?? 'unknown',
+          };
+        }
+      }
+      return this.isOnline();
+    } catch {
+      return this.isOnline();
     }
   }
 

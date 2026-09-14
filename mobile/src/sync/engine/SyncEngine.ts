@@ -194,7 +194,8 @@ export class SyncEngine {
       return;
     }
 
-    if (!this.networkManager.isOnline()) {
+    const isOnline = await this.networkManager.checkIsOnline();
+    if (!isOnline) {
       const pendingCount = await this.outboxRepo.countPending();
       this.updateStatus({ state: 'OFFLINE', pendingCount });
       return;

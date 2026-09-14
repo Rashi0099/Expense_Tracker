@@ -66,24 +66,22 @@ export async function getDashboardSummaryUseCase(dateRange?: {
   const incomeRepo = new SQLiteIncomeRepository();
   const outboxRepo = new SQLiteSyncOutboxRepository();
 
-  const [totalExpensesCents, totalIncomeCents, recentExpenses, recentIncome, pendingSyncCount] =
+  const [totalExpensesCents, totalIncomeCents, recentExpenses, recentIncome, pendingSyncCount, allExpenses] =
     await Promise.all([
       expenseRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
       incomeRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
       expenseRepo.list({ limit: 5 }),
       incomeRepo.list({ limit: 5 }),
       outboxRepo.countPending(),
+      expenseRepo.list(
+        dateRange?.startDate || dateRange?.endDate
+          ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
+          : undefined
+      ),
     ]);
 
   // Exact Balance = Income - Expenses (integer arithmetic in cents)
   const netBalanceCents = totalIncomeCents - totalExpensesCents;
-
-  // Derive category spending breakdown from expenses within the date range
-  const allExpenses = await expenseRepo.list(
-    dateRange?.startDate || dateRange?.endDate
-      ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
-      : undefined
-  );
   const categoryMap = new Map<
     string,
     { name: string; icon: string; color: string; totalCents: number }

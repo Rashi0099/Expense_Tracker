@@ -11,6 +11,7 @@ import { SecureStorage } from '../api/client/secureStorage';
 import { NotificationService, NotificationItem } from './notificationService';
 import { getUTCTimestamp } from '../utils/date';
 import { logger } from '../utils/logger';
+import { NetworkStateManager } from '../sync/network/NetworkState';
 
 const FCM_TOKEN_STORAGE_KEY = '@auth/fcm_push_token';
 
@@ -47,6 +48,10 @@ export class FCMPushService {
       // Check if already registered with backend
       const cachedToken = await AsyncStorage.getItem(FCM_TOKEN_STORAGE_KEY);
       if (cachedToken === token) {
+        return token;
+      }
+
+      if (!NetworkStateManager.getInstance().isOnline()) {
         return token;
       }
 
