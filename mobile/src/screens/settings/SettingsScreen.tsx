@@ -110,6 +110,27 @@ export const SettingsScreen: React.FC = () => {
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Settings</Text>
       </View>
 
+      {/* Account Info Card */}
+      <Card style={styles.card}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
+          Account Details
+        </Text>
+        <View style={styles.row}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
+            {user?.phoneNumber ? 'Phone Number' : 'Email'}
+          </Text>
+          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
+            {user?.phoneNumber || user?.email || 'N/A'}
+          </Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Base Currency</Text>
+          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
+            {user?.baseCurrency || 'USD'}
+          </Text>
+        </View>
+      </Card>
+
       {/* Feature Management Links */}
       <Card style={styles.card}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
@@ -176,27 +197,6 @@ export const SettingsScreen: React.FC = () => {
           </View>
           <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
         </TouchableOpacity>
-      </Card>
-
-      {/* Account Info Card */}
-      <Card style={styles.card}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-          Account Details
-        </Text>
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
-            {user?.phoneNumber ? 'Phone Number' : 'Email'}
-          </Text>
-          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {user?.phoneNumber || user?.email || 'N/A'}
-          </Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Base Currency</Text>
-          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {user?.baseCurrency || 'USD'}
-          </Text>
-        </View>
       </Card>
 
 
