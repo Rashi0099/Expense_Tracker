@@ -202,8 +202,9 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                 styles.balanceTag,
                 { color: isDark ? '#8F9BB3' : '#64748B' },
               ]}
+              numberOfLines={1}
             >
-              NET CASHFLOW BALANCE
+              BALANCE
             </Text>
             <Text
               style={[
@@ -215,18 +216,6 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
               minimumFontScale={0.7}
             >
               {formatCurrencyFromCents(metrics.netBalanceCents, currency)}
-            </Text>
-            <Text
-              style={[
-                styles.balanceSubNotice,
-                { color: isDark ? '#8F9BB3' : '#64748B' },
-              ]}
-            >
-              {metrics.netBalanceCents < 0
-                ? "You've spent more than earned"
-                : metrics.netBalanceCents > 0
-                ? "You've saved more than spent"
-                : 'Balanced cashflow'}
             </Text>
           </View>
         </View>
