@@ -90,7 +90,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
   onFilterChange,
   refreshTrigger = 0,
 }) => {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
   const [selectedFilter, setSelectedFilter] = useState<DashboardFilter>('THIS_MONTH');
   const [showDropdown, setShowDropdown] = useState(false);
   const pillRef = useRef<View>(null);
@@ -168,8 +168,8 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
         style={[
           styles.balanceCard,
           {
-            backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
-            borderColor: isDark ? '#2E384D' : '#E7D788',
+            backgroundColor: isDark ? '#161F35' : '#FFFDF8',
+            borderColor: isDark ? '#263352' : '#E7D788',
             shadowOpacity: isDark ? 0.3 : 0.06,
           },
         ]}
@@ -187,7 +187,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
             <Text
               style={[
                 styles.balanceLabel,
-                { color: isDark ? '#CBD5E1' : '#17233C' },
+                { color: isDark ? '#E8EDF8' : '#17233C' },
               ]}
             >
               Total Balance
@@ -203,8 +203,8 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
               style={[
                 styles.filterPill,
                 {
-                  backgroundColor: isDark ? '#1F293D' : '#F7F1E5',
-                  borderColor: isDark ? '#2E384D' : '#E7D788',
+                  backgroundColor: isDark ? '#1C2840' : '#F7F1E5',
+                  borderColor: isDark ? '#263352' : '#E7D788',
                 },
               ]}
               accessibilityRole="button"
@@ -213,7 +213,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
               <Text
                 style={[
                   styles.filterPillText,
-                  { color: isDark ? '#F8FAFC' : '#17233C' },
+                  { color: isDark ? '#E8EDF8' : '#17233C' },
                 ]}
               >
                 {FILTER_LABELS[selectedFilter]}
@@ -221,7 +221,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
               <Text
                 style={[
                   styles.filterPillChevron,
-                  { color: isDark ? '#94A3B8' : '#718096' },
+                  { color: isDark ? '#9AAAC8' : '#718096' },
                 ]}
               >
                 {showDropdown ? '▴' : '▾'}
@@ -247,8 +247,8 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                     {
                       top: dropdownPos.top,
                       right: dropdownPos.right,
-                      backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
-                      borderColor: isDark ? '#2E384D' : '#E7D788',
+                      backgroundColor: isDark ? '#161F35' : '#FFFDF8',
+                      borderColor: isDark ? '#263352' : '#E7D788',
                       shadowOpacity: isDark ? 0.45 : 0.12,
                     },
                   ]}
@@ -264,7 +264,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                           styles.dropdownItem,
                           isSelected && {
                             backgroundColor: isDark
-                              ? 'rgba(29, 88, 66, 0.25)'
+                              ? 'rgba(79, 142, 247, 0.20)'
                               : 'rgba(29, 88, 66, 0.12)',
                           },
                         ]}
@@ -273,14 +273,14 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
                           style={[
                             styles.dropdownItemText,
                             isSelected
-                              ? { color: isDark ? '#FFFFFF' : '#1D5842', fontWeight: '700' }
-                              : { color: isDark ? '#CBD5E1' : '#475569', fontWeight: '500' },
+                              ? { color: isDark ? '#4F8EF7' : '#1D5842', fontWeight: '700' }
+                              : { color: isDark ? '#9AAAC8' : '#475569', fontWeight: '500' },
                           ]}
                         >
                           {opt.label}
                         </Text>
                         {isSelected && (
-                          <Text style={[styles.dropdownItemCheck, { color: '#1D5842' }]}>✓</Text>
+                          <Text style={[styles.dropdownItemCheck, { color: isDark ? '#4F8EF7' : '#1D5842' }]}>✓</Text>
                         )}
                       </TouchableOpacity>
                     );
@@ -341,8 +341,8 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
           style={[
             styles.metricCard,
             {
-              backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
-              borderColor: isDark ? '#2E384D' : '#E7D788',
+              backgroundColor: isDark ? '#161F35' : '#FFFDF8',
+              borderColor: isDark ? '#263352' : '#E7D788',
             },
           ]}
           accessibilityRole="button"
@@ -352,7 +352,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
             <Text style={styles.incomeArrow}>↑</Text>
           </View>
           <View style={styles.metricTexts}>
-            <Text style={[styles.metricLabel, { color: isDark ? '#CBD5E1' : '#718096' }]}>
+            <Text style={[styles.metricLabel, { color: isDark ? '#9AAAC8' : '#718096' }]}>
               Income
             </Text>
             <Text
@@ -373,8 +373,8 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
           style={[
             styles.metricCard,
             {
-              backgroundColor: isDark ? '#161E2E' : '#FFFDF8',
-              borderColor: isDark ? '#2E384D' : '#E7D788',
+              backgroundColor: isDark ? '#161F35' : '#FFFDF8',
+              borderColor: isDark ? '#263352' : '#E7D788',
             },
           ]}
           accessibilityRole="button"
@@ -384,7 +384,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
             <Text style={styles.expenseArrow}>↓</Text>
           </View>
           <View style={styles.metricTexts}>
-            <Text style={[styles.metricLabel, { color: isDark ? '#CBD5E1' : '#718096' }]}>
+            <Text style={[styles.metricLabel, { color: isDark ? '#9AAAC8' : '#718096' }]}>
               Expenses
             </Text>
             <Text
