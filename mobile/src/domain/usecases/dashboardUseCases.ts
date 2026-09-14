@@ -58,6 +58,68 @@ export async function getCashflowMetricsUseCase(dateRange?: {
   };
 }
 
+/**
+ * Returns daily cumulative net balance data points for the sparkline chart.
+ * Each value represents the running net balance at the end of that day.
+ * Returns at most `points` values (default 14), evenly spaced across the date range.
+ */
+export async function getBalanceTrendUseCase(
+  dateRange: { startDate: string; endDate: string },
+  points: number = 14
+): Promise<number[]> {
+  const expenseRepo = new SQLiteExpenseRepository();
+  const incomeRepo = new SQLiteIncomeRepository();
+
+  const [expenses, incomes] = await Promise.all([
+    expenseRepo.list({ startDate: dateRange.startDate, endDate: dateRange.endDate }),
+    incomeRepo.list({ startDate: dateRange.startDate, endDate: dateRange.endDate }),
+  ]);
+
+  // Build a map of date -> { income, expense } in cents
+  const dailyMap = new Map<string, { income: number; expense: number }>();
+
+  for (const inc of incomes) {
+    const d = inc.transactionDate;
+    const entry = dailyMap.get(d) || { income: 0, expense: 0 };
+    entry.income += inc.amountCents;
+    dailyMap.set(d, entry);
+  }
+  for (const exp of expenses) {
+    const d = exp.transactionDate;
+    const entry = dailyMap.get(d) || { income: 0, expense: 0 };
+    entry.expense += exp.amountCents;
+    dailyMap.set(d, entry);
+  }
+
+  // Generate all dates in range
+  const start = new Date(dateRange.startDate);
+  const end = new Date(dateRange.endDate);
+  const allDates: string[] = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    allDates.push(`${y}-${m}-${day}`);
+  }
+
+  // Compute cumulative net balance per day
+  let running = 0;
+  const dailyValues: number[] = allDates.map((date) => {
+    const entry = dailyMap.get(date);
+    if (entry) {
+      running += entry.income - entry.expense;
+    }
+    return running;
+  });
+
+  if (dailyValues.length === 0) return [];
+  if (dailyValues.length <= points) return dailyValues;
+
+  // Down-sample to `points` evenly spaced values
+  const step = (dailyValues.length - 1) / (points - 1);
+  return Array.from({ length: points }, (_, i) => dailyValues[Math.round(i * step)]);
+}
+
 export async function getDashboardSummaryUseCase(dateRange?: {
   startDate?: string;
   endDate?: string;

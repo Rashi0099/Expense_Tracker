@@ -9,11 +9,13 @@ import {
 } from 'react-native';
 import {
   getCashflowMetricsUseCase,
+  getBalanceTrendUseCase,
   CashflowMetrics,
 } from '../../../domain/usecases/dashboardUseCases';
 import { formatCurrencyFromCents } from '../../../utils/money';
 import { DataEvents } from '../../../database/sqlite/DataEvents';
 import { useTheme } from '../../../theme/useTheme';
+import { SparklineChart } from '../../../components/common/SparklineChart';
 
 export type DashboardFilter = 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_3_MONTHS' | 'THIS_YEAR' | 'ALL_TIME';
 
@@ -98,13 +100,20 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
     totalIncomeCents: 0,
     totalExpensesCents: 0,
   });
+  const [trendData, setTrendData] = useState<number[]>([]);
 
   // Fast isolated metrics query without reloading whole screen
   const fetchMetrics = useCallback(async (filter: DashboardFilter) => {
     try {
       const dateRange = getDateRangeForFilter(filter);
-      const res = await getCashflowMetricsUseCase(dateRange);
+      const [res, trend] = await Promise.all([
+        getCashflowMetricsUseCase(dateRange),
+        dateRange.startDate && dateRange.endDate
+          ? getBalanceTrendUseCase({ startDate: dateRange.startDate, endDate: dateRange.endDate })
+          : Promise.resolve([]),
+      ]);
       setMetrics(res);
+      setTrendData(trend);
     } catch {
       // Handled
     }
@@ -304,11 +313,22 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
             </View>
           </View>
 
-          {/* Decorative subtle golden wave curves matching mockup */}
-          <View style={styles.waveContainer}>
-            <View style={[styles.waveCurve1, { borderColor: isDark ? '#92400E' : '#D99A27' }]} />
-            <View style={[styles.waveCurve2, { borderColor: isDark ? '#78350F' : '#E7D788' }]} />
-          </View>
+          {/* Real sparkline area chart - golden area graph */}
+          {trendData.length >= 2 ? (
+            <SparklineChart
+              data={trendData}
+              width={100}
+              height={48}
+              lineColor={isDark ? '#E6B840' : '#D99A27'}
+              fillColor={isDark ? 'rgba(230,184,64,0.18)' : 'rgba(217,154,39,0.12)'}
+              strokeWidth={2.5}
+            />
+          ) : (
+            <View style={styles.waveContainer}>
+              <View style={[styles.waveCurve1, { borderColor: isDark ? '#92400E' : '#D99A27' }]} />
+              <View style={[styles.waveCurve2, { borderColor: isDark ? '#78350F' : '#E7D788' }]} />
+            </View>
+          )}
         </View>
       </View>
 
