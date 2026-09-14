@@ -130,8 +130,8 @@ export const DashboardScreen: React.FC = () => {
       {/* Standalone Cashflow Overview Card (Fast Isolated Filtering) */}
       <CashflowOverviewCard
         currency={currency}
-        onNavigateIncome={() => navigation.navigate('Income')}
-        onNavigateExpenses={() => navigation.navigate('Expenses')}
+        onNavigateIncome={() => navigation.navigate('Expenses', { tab: 'INCOME' })}
+        onNavigateExpenses={() => navigation.navigate('Expenses', { tab: 'EXPENSE' })}
         refreshTrigger={refreshTrigger}
       />
 

@@ -16,18 +16,28 @@ import { CurrencyText } from '../../components/common/CurrencyText';
 import { EmptyState } from '../../components/common/EmptyState';
 import { BottomSheet } from '../../components/common/BottomSheet';
 import { Button } from '../../components/common/Button';
-import { ExpenseModel, CategoryModel, PaymentMethod } from '../../domain/models';
+import { ExpenseModel, CategoryModel, PaymentMethod, IncomeModel } from '../../domain/models';
 import { listExpensesUseCase, deleteExpenseUseCase } from '../../domain/usecases/expenseUseCases';
+import { listIncomeUseCase, deleteIncomeUseCase } from '../../domain/usecases/incomeUseCases';
 import { listCategoriesUseCase } from '../../domain/usecases/categoryUseCases';
 import { ExpenseEditModal } from './components/ExpenseEditModal';
+import { IncomeEditModal } from './components/IncomeEditModal';
 import { useTheme } from '../../theme/useTheme';
 import { formatDisplayDate } from '../../utils/date';
-import { groupExpensesByDate, ExpenseDateGroup } from '../../utils/dateGrouping';
+import {
+  groupExpensesByDate,
+  groupIncomesByDate,
+  ExpenseDateGroup,
+  IncomeDateGroup,
+} from '../../utils/dateGrouping';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 import { PAYMENT_METHODS } from '../../app/config/constants';
 import { useSync } from '../../sync/hooks/useSync';
 import { useNetworkState } from '../../sync/network/useNetworkState';
 import { IconFilter } from '../../components/common/NavIcons';
+import { useRoute } from '@react-navigation/native';
+
+export type TransactionTab = 'INCOME' | 'EXPENSE';
 
 const PAGE_SIZE = 25;
 
@@ -35,8 +45,13 @@ export const ExpensesListScreen: React.FC = () => {
   const { theme } = useTheme();
   const { syncNow } = useSync();
   const { isOffline } = useNetworkState();
+  const route = useRoute<any>();
+
+  const initialTab: TransactionTab = route.params?.tab === 'INCOME' ? 'INCOME' : 'EXPENSE';
+  const [selectedTab, setSelectedTab] = useState<TransactionTab>(initialTab);
 
   const [expenses, setExpenses] = useState<ExpenseModel[]>([]);
+  const [incomes, setIncomes] = useState<IncomeModel[]>([]);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -51,6 +66,17 @@ export const ExpensesListScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedExpense, setSelectedExpense] = useState<ExpenseModel | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Income Modal State
+  const [selectedIncome, setSelectedIncome] = useState<IncomeModel | null>(null);
+  const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
+
+  // Keep selected tab in sync if route param changes
+  useEffect(() => {
+    if (route.params?.tab) {
+      setSelectedTab(route.params.tab);
+    }
+  }, [route.params?.tab]);
 
   // Debounce search input (250ms) to ensure lightning-fast SQLite search
   useEffect(() => {
@@ -107,23 +133,48 @@ export const ExpensesListScreen: React.FC = () => {
     [debouncedSearch, selectedCategory, selectedPaymentMethod]
   );
 
+  // Fetch incomes from local SQLite
+  const loadIncomes = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const list = await listIncomeUseCase({
+        search: debouncedSearch.trim() || undefined,
+      });
+      setIncomes(list);
+    } catch {
+      // Handled
+    } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedSearch]);
+
   // Reload when filters or search change
   useEffect(() => {
-    loadExpenses(true);
-  }, [debouncedSearch, selectedCategory, selectedPaymentMethod, loadExpenses]);
+    if (selectedTab === 'EXPENSE') {
+      loadExpenses(true);
+    } else {
+      loadIncomes();
+    }
+  }, [selectedTab, debouncedSearch, selectedCategory, selectedPaymentMethod, loadExpenses, loadIncomes]);
 
   // Reactive subscription: auto-refresh on SQLite change events
   useEffect(() => {
-    const unsub = DataEvents.subscribe('EXPENSES_CHANGED', () => {
+    const unsubExp = DataEvents.subscribe('EXPENSES_CHANGED', () => {
       loadExpenses(true);
     });
-    return unsub;
-  }, [loadExpenses]);
+    const unsubInc = DataEvents.subscribe('INCOME_CHANGED', () => {
+      loadIncomes();
+    });
+    return () => {
+      unsubExp();
+      unsubInc();
+    };
+  }, [loadExpenses, loadIncomes]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await loadExpenses(true);
+      await Promise.all([loadExpenses(true), loadIncomes()]);
       if (!isOffline) {
         syncNow().catch(() => {});
       }
@@ -133,7 +184,7 @@ export const ExpensesListScreen: React.FC = () => {
   };
 
   const handleLoadMore = () => {
-    if (!isLoading && hasMore) {
+    if (selectedTab === 'EXPENSE' && !isLoading && hasMore) {
       loadExpenses(false);
     }
   };
@@ -183,6 +234,51 @@ export const ExpensesListScreen: React.FC = () => {
     );
   };
 
+  const handleIncomeCardPress = (item: IncomeModel) => {
+    setSelectedIncome(item);
+    setIsIncomeModalOpen(true);
+  };
+
+  const handleIncomeActionMenu = (item: IncomeModel) => {
+    Alert.alert(
+      item.source || item.categoryName || 'Income',
+      `Choose an action for this income of $${(item.amountCents / 100).toFixed(2)}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Edit',
+          onPress: () => {
+            setSelectedIncome(item);
+            setIsIncomeModalOpen(true);
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => handleIncomeDelete(item.id, item.source || 'Income'),
+        },
+      ]
+    );
+  };
+
+  const handleIncomeDelete = (id: string, source: string) => {
+    Alert.alert(
+      'Delete Income',
+      `Are you sure you want to delete this income from ${source}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteIncomeUseCase(id);
+            loadIncomes();
+          },
+        },
+      ]
+    );
+  };
+
   const handleClearAllFilters = () => {
     setSelectedCategory(null);
     setSelectedPaymentMethod(null);
@@ -190,9 +286,13 @@ export const ExpensesListScreen: React.FC = () => {
   };
 
   // Group transactions into Today, Yesterday, and formatted date sections
-  const sections: ExpenseDateGroup[] = useMemo(() => {
+  const expenseSections: ExpenseDateGroup[] = useMemo(() => {
     return groupExpensesByDate(expenses);
   }, [expenses]);
+
+  const incomeSections: IncomeDateGroup[] = useMemo(() => {
+    return groupIncomesByDate(incomes);
+  }, [incomes]);
 
   const activeFiltersCount = (selectedCategory ? 1 : 0) + (selectedPaymentMethod ? 1 : 0);
 
@@ -207,168 +307,320 @@ export const ExpensesListScreen: React.FC = () => {
         <View>
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Transactions</Text>
           <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-            {expenses.length} transaction{expenses.length !== 1 ? 's' : ''} stored offline in SQLite
+            {selectedTab === 'EXPENSE'
+              ? `${expenses.length} transaction${expenses.length !== 1 ? 's' : ''} stored offline in SQLite`
+              : `${incomes.length} income stream${incomes.length !== 1 ? 's' : ''} stored offline in SQLite`}
           </Text>
         </View>
 
-        {/* Filter Button with Count Badge */}
-        <TouchableOpacity
-          onPress={() => setIsFilterSheetOpen(true)}
-          style={[
-            styles.filterButton,
-            {
-              backgroundColor: activeFiltersCount > 0 ? theme.colors.primary : theme.colors.surface,
-              borderColor: theme.colors.surfaceBorder,
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={`Open filter sheet. ${activeFiltersCount} filters currently active.`}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <IconFilter
-              color={activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary}
-              size={13}
-            />
-            <Text
-              style={[
-                styles.filterButtonText,
-                { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
-              ]}
-            >
-              Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
-            </Text>
-          </View>
-        </TouchableOpacity>
+        {/* Right Header Action */}
+        {selectedTab === 'EXPENSE' ? (
+          <TouchableOpacity
+            onPress={() => setIsFilterSheetOpen(true)}
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: activeFiltersCount > 0 ? theme.colors.primary : theme.colors.surface,
+                borderColor: theme.colors.surfaceBorder,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Open filter sheet. ${activeFiltersCount} filters currently active.`}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <IconFilter
+                color={activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary}
+                size={13}
+              />
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
+                ]}
+              >
+                Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedIncome(null);
+              setIsIncomeModalOpen(true);
+            }}
+            style={[styles.addIncomeButton, { backgroundColor: theme.colors.income }]}
+            accessibilityRole="button"
+            accessibilityLabel="Record new income"
+          >
+            <Text style={styles.addIncomeButtonText}>+ Add Income</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Search Input */}
       <TextInput
-        placeholder="Search merchant, description, or notes..."
+        placeholder={
+          selectedTab === 'EXPENSE'
+            ? 'Search merchant, description, or notes...'
+            : 'Search source, note, or client...'
+        }
         value={search}
         onChangeText={setSearch}
         style={styles.searchInput}
         autoCapitalize="none"
       />
 
-      {/* Active Filter Chips Bar */}
-      {activeFiltersCount > 0 && (
-        <View style={styles.activeFiltersRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersScroll}>
-            {selectedCategoryModel && (
-              <TouchableOpacity
-                onPress={() => setSelectedCategory(null)}
-                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
-              >
-                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
-                  {selectedCategoryModel.icon} {selectedCategoryModel.name} ✕
+      {/* Segmented Filter Control: [ Income | Expense ] */}
+      <View style={styles.segmentContainer}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setSelectedTab('INCOME')}
+          style={[
+            styles.segmentTab,
+            selectedTab === 'INCOME' && styles.segmentTabActive,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Filter by Income"
+        >
+          <Text
+            style={[
+              styles.segmentText,
+              selectedTab === 'INCOME' && styles.segmentTextActive,
+            ]}
+          >
+            Income
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setSelectedTab('EXPENSE')}
+          style={[
+            styles.segmentTab,
+            selectedTab === 'EXPENSE' && styles.segmentTabActive,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Filter by Expense"
+        >
+          <Text
+            style={[
+              styles.segmentText,
+              selectedTab === 'EXPENSE' && styles.segmentTextActive,
+            ]}
+          >
+            Expense
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* EXPENSE VIEW */}
+      {selectedTab === 'EXPENSE' ? (
+        <>
+          {/* Active Filter Chips Bar */}
+          {activeFiltersCount > 0 && (
+            <View style={styles.activeFiltersRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersScroll}>
+                {selectedCategoryModel && (
+                  <TouchableOpacity
+                    onPress={() => setSelectedCategory(null)}
+                    style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+                  >
+                    <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                      {selectedCategoryModel.icon} {selectedCategoryModel.name} ✕
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {selectedPaymentMethod && (
+                  <TouchableOpacity
+                    onPress={() => setSelectedPaymentMethod(null)}
+                    style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+                  >
+                    <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                      {selectedPaymentMethod.replace('_', ' ')} ✕
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity onPress={handleClearAllFilters} style={styles.clearAllButton}>
+                  <Text style={[styles.clearAllText, { color: theme.colors.expense }]}>Clear All</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Grouped Expenses List */}
+          <SectionList
+            sections={expenseSections}
+            keyExtractor={(item) => item.id}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={theme.colors.primary}
+                colors={[theme.colors.primary]}
+              />
+            }
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            contentContainerStyle={styles.listContent}
+            stickySectionHeadersEnabled={false}
+            ListEmptyComponent={
+              !isLoading ? (
+                <EmptyState
+                  title={search || activeFiltersCount > 0 ? 'No matching expenses' : 'No expenses recorded yet'}
+                  description={
+                    search || activeFiltersCount > 0
+                      ? 'Try clearing your search or filters to see all local transactions.'
+                      : 'Tap "+ Add" in the bottom menu to save an expense in 2-5 seconds.'
+                  }
+                />
+              ) : null
+            }
+            renderSectionHeader={({ section: { title } }) => (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionHeaderText, { color: theme.colors.textMuted }]}>
+                  {title}
                 </Text>
+              </View>
+            )}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleCardPress(item)}
+                onLongPress={() => handleActionMenu(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.payee || item.categoryName}, $${(item.amountCents / 100).toFixed(2)}, on ${formatDisplayDate(item.transactionDate)}`}
+              >
+                <Card style={styles.card}>
+                  <View style={styles.cardLeft}>
+                    <View
+                      style={[
+                        styles.iconBox,
+                        {
+                          backgroundColor: item.categoryColor
+                            ? `${item.categoryColor}25`
+                            : theme.colors.surfaceSubtle,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.icon}>{item.categoryIcon || '🏷️'}</Text>
+                    </View>
+                    <View style={styles.txInfo}>
+                      <Text style={[styles.payee, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                        {item.payee || item.categoryName || 'Expense'}
+                      </Text>
+                      <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
+                        {item.paymentMethod.replace('_', ' ')}
+                        {item.categoryName ? ` • ${item.categoryName}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardRight}>
+                    <CurrencyText
+                      amountCents={item.amountCents}
+                      currency={item.currency}
+                      type="expense"
+                      showSign
+                      style={styles.amount}
+                    />
+                    {item.syncStatus === 'PENDING' && (
+                      <Text style={[styles.syncBadge, { color: theme.colors.warning }]}>• Offline</Text>
+                    )}
+                  </View>
+                </Card>
               </TouchableOpacity>
             )}
+          />
+        </>
+      ) : (
+        /* INCOME VIEW */
+        <SectionList
+          sections={incomeSections}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary}
+              colors={[theme.colors.primary]}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
+          ListEmptyComponent={
+            !isLoading ? (
+              <EmptyState
+                title={search ? 'No matching income' : 'No income recorded yet'}
+                description={
+                  search
+                    ? 'Try clearing your search keyword.'
+                    : 'Tap "+ Add Income" above to track salary, freelance, or investment returns.'
+                }
+              />
+            ) : null
+          }
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionHeaderText, { color: theme.colors.textMuted }]}>
+                {title}
+              </Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleIncomeCardPress(item)}
+              onLongPress={() => handleIncomeActionMenu(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.source}, $${(item.amountCents / 100).toFixed(2)}, on ${formatDisplayDate(item.transactionDate)}`}
+            >
+              <Card style={styles.card}>
+                <View style={styles.cardLeft}>
+                  <View
+                    style={[
+                      styles.iconBox,
+                      {
+                        backgroundColor: item.categoryColor
+                          ? `${item.categoryColor}25`
+                          : `${theme.colors.income}25`,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.icon}>{item.categoryIcon || '💼'}</Text>
+                  </View>
+                  <View style={styles.txInfo}>
+                    <Text style={[styles.payee, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                      {item.source}
+                    </Text>
+                    <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
+                      {item.paymentMethod ? item.paymentMethod.replace('_', ' ') : 'INCOME'}
+                      {item.categoryName ? ` • ${item.categoryName}` : ''}
+                      {item.note ? ` • ${item.note}` : ''}
+                    </Text>
+                  </View>
+                </View>
 
-            {selectedPaymentMethod && (
-              <TouchableOpacity
-                onPress={() => setSelectedPaymentMethod(null)}
-                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
-              >
-                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
-                  {selectedPaymentMethod.replace('_', ' ')} ✕
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity onPress={handleClearAllFilters} style={styles.clearAllButton}>
-              <Text style={[styles.clearAllText, { color: theme.colors.expense }]}>Clear All</Text>
+                <View style={styles.cardRight}>
+                  <CurrencyText
+                    amountCents={item.amountCents}
+                    currency={item.currency}
+                    type="income"
+                    showSign
+                    style={styles.amount}
+                  />
+                  {item.syncStatus === 'PENDING' && (
+                    <Text style={[styles.syncBadge, { color: theme.colors.warning }]}>• Offline</Text>
+                  )}
+                </View>
+              </Card>
             </TouchableOpacity>
-          </ScrollView>
-        </View>
+          )}
+        />
       )}
 
-      {/* Grouped Transactions List */}
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
-        }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        contentContainerStyle={styles.listContent}
-        stickySectionHeadersEnabled={false}
-        ListEmptyComponent={
-          !isLoading ? (
-            <EmptyState
-              title={search || activeFiltersCount > 0 ? 'No matching expenses' : 'No expenses recorded yet'}
-              description={
-                search || activeFiltersCount > 0
-                  ? 'Try clearing your search or filters to see all local transactions.'
-                  : 'Tap "+ Add" in the bottom menu to save an expense in 2-5 seconds.'
-              }
-            />
-          ) : null
-        }
-        renderSectionHeader={({ section: { title } }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionHeaderText, { color: theme.colors.textMuted }]}>
-              {title}
-            </Text>
-          </View>
-        )}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => handleCardPress(item)}
-            onLongPress={() => handleActionMenu(item)}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.payee || item.categoryName}, $${(item.amountCents / 100).toFixed(2)}, on ${formatDisplayDate(item.transactionDate)}`}
-          >
-            <Card style={styles.card}>
-              <View style={styles.cardLeft}>
-                <View
-                  style={[
-                    styles.iconBox,
-                    {
-                      backgroundColor: item.categoryColor
-                        ? `${item.categoryColor}25`
-                        : theme.colors.surfaceSubtle,
-                    },
-                  ]}
-                >
-                  <Text style={styles.icon}>{item.categoryIcon || '🏷️'}</Text>
-                </View>
-                <View style={styles.txInfo}>
-                  <Text style={[styles.payee, { color: theme.colors.textPrimary }]} numberOfLines={1}>
-                    {item.payee || item.categoryName || 'Expense'}
-                  </Text>
-                  <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
-                    {item.paymentMethod.replace('_', ' ')}
-                    {item.categoryName ? ` • ${item.categoryName}` : ''}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.cardRight}>
-                <CurrencyText
-                  amountCents={item.amountCents}
-                  currency={item.currency}
-                  type="expense"
-                  showSign
-                  style={styles.amount}
-                />
-                {item.syncStatus === 'PENDING' && (
-                  <Text style={[styles.syncBadge, { color: theme.colors.warning }]}>• Offline</Text>
-                )}
-              </View>
-            </Card>
-          </TouchableOpacity>
-        )}
-      />
-
-      {/* Advanced Filter Bottom Sheet */}
+      {/* Advanced Filter Bottom Sheet (for Expenses) */}
       <BottomSheet
         visible={isFilterSheetOpen}
         onClose={() => setIsFilterSheetOpen(false)}
@@ -466,7 +718,7 @@ export const ExpensesListScreen: React.FC = () => {
         </View>
       </BottomSheet>
 
-      {/* Edit & Delete Transaction Modal */}
+      {/* Edit & Delete Expense Modal */}
       {selectedExpense && (
         <ExpenseEditModal
           visible={isEditModalOpen}
@@ -482,6 +734,21 @@ export const ExpensesListScreen: React.FC = () => {
           }}
         />
       )}
+
+      {/* Record & Edit Income Modal */}
+      <IncomeEditModal
+        visible={isIncomeModalOpen}
+        income={selectedIncome}
+        onClose={() => {
+          setIsIncomeModalOpen(false);
+          setSelectedIncome(null);
+        }}
+        onSuccess={() => {
+          setIsIncomeModalOpen(false);
+          setSelectedIncome(null);
+          loadIncomes();
+        }}
+      />
     </Screen>
   );
 };
@@ -517,6 +784,52 @@ const styles = StyleSheet.create({
   },
   filterButtonText: {
     fontSize: 12,
+    fontWeight: '700',
+  },
+  addIncomeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minHeight: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 9999,
+  },
+  addIncomeButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#161B2E',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#232A42',
+  },
+  segmentTab: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  segmentTabActive: {
+    backgroundColor: '#283256',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8F9BB3',
+  },
+  segmentTextActive: {
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   searchInput: {
