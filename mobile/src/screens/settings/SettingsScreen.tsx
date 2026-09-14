@@ -6,7 +6,6 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
-import { useSync } from '../../sync/hooks/useSync';
 import { ENV } from '../../app/config/env';
 import { NotificationService, NotificationSettings } from '../../services/notificationService';
 import { hotUpdateService, UpdateCheckResult } from '../../services/HotUpdateService';
@@ -16,15 +15,6 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const { theme, isDark, toggleTheme } = useTheme();
-  const {
-    state: syncState,
-    isSyncing,
-    isOffline,
-    pendingCount,
-    lastSyncedAt,
-    lastError,
-    syncNow,
-  } = useSync();
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
     recurringRemindersEnabled: true,
@@ -92,22 +82,18 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const handleSignOut = () => {
-    if (pendingCount > 0) {
-      Alert.alert(
-        'Unsynced Local Changes',
-        `You have ${pendingCount} offline change(s) queued for synchronization. If you sign out now, pending changes will wait in local SQLite until you sign in again.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Sign Out',
-            style: 'destructive',
-            onPress: () => logout(),
-          },
-        ]
-      );
-    } else {
-      logout();
-    }
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: () => logout(),
+        },
+      ]
+    );
   };
 
   return (
@@ -203,87 +189,6 @@ export const SettingsScreen: React.FC = () => {
           </View>
           <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
         </TouchableOpacity>
-      </Card>
-
-      {/* Cloud & Offline Synchronization Card */}
-      <Card style={styles.card}>
-        <View style={styles.sectionHeaderRow}>
-          <View>
-            <Text style={[styles.sectionTitle, { color: theme.colors.textMuted, marginBottom: 2 }]}>
-              Cloud & Offline Sync
-            </Text>
-            <Text style={[styles.label, { color: theme.colors.textSecondary, fontSize: 12 }]}>
-              Local SQLite (Zero Data Loss)
-            </Text>
-          </View>
-          <Button
-            label={isSyncing ? 'Syncing...' : 'Sync Now'}
-            variant="primary"
-            size="sm"
-            disabled={isSyncing || isOffline}
-            onPress={syncNow}
-          />
-        </View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Status</Text>
-          <Text
-            style={[
-              styles.value,
-              {
-                color:
-                  syncState === 'SYNCED'
-                    ? theme.colors.income
-                    : syncState === 'OFFLINE'
-                    ? theme.colors.textMuted
-                    : syncState === 'ERROR'
-                    ? theme.colors.expense
-                    : theme.colors.warning,
-                fontWeight: '700',
-              },
-            ]}
-          >
-            {syncState === 'SYNCED'
-              ? '✓ Synced to Cloud'
-              : syncState === 'SYNCING'
-              ? '🔄 Syncing...'
-              : syncState === 'OFFLINE'
-              ? '📡 Offline (Stored Locally)'
-              : syncState === 'PENDING_CHANGES'
-              ? '⬆️ Pending Sync'
-              : '⚠️ Sync Error'}
-          </Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Pending Outbox</Text>
-          <Text
-            style={[
-              styles.value,
-              {
-                color: pendingCount > 0 ? theme.colors.warning : theme.colors.income,
-                fontWeight: '700',
-              },
-            ]}
-          >
-            {pendingCount} mutation{pendingCount !== 1 ? 's' : ''} queued
-          </Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Last Synced</Text>
-          <Text style={[styles.value, { color: theme.colors.textPrimary }]}>
-            {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : 'Never'}
-          </Text>
-        </View>
-
-        {lastError && (
-          <View style={styles.errorRow}>
-            <Text style={[styles.errorText, { color: theme.colors.expense }]}>
-              {lastError}
-            </Text>
-          </View>
-        )}
       </Card>
 
       {/* In-App Updates (OTA) Card */}

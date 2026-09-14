@@ -11,8 +11,6 @@ import { Screen } from '../../components/common/Screen';
 import { Card } from '../../components/common/Card';
 import { CurrencyText } from '../../components/common/CurrencyText';
 import { SectionHeader } from '../../components/common/SectionHeader';
-import { OfflineBanner } from '../../components/common/OfflineBanner';
-import { SyncErrorBanner } from '../../components/common/SyncErrorBanner';
 import {
   getDashboardSummaryUseCase,
   DashboardSummary,
@@ -145,9 +143,6 @@ export const DashboardScreen: React.FC = () => {
         />
       }
     >
-      <OfflineBanner isOffline={isOffline} pendingCount={summary.pendingSyncCount} />
-      <SyncErrorBanner />
-
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Overview</Text>
