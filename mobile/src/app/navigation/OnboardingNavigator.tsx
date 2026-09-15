@@ -5,6 +5,7 @@ import { OnboardingProvider } from '../../screens/onboarding/OnboardingContext';
 import { Step1ProfileScreen } from '../../screens/onboarding/Step1ProfileScreen';
 import { Step2ExpenseCategoriesScreen } from '../../screens/onboarding/Step2ExpenseCategoriesScreen';
 import { Step3IncomeCategoriesScreen } from '../../screens/onboarding/Step3IncomeCategoriesScreen';
+import { Step4AllSetScreen } from '../../screens/onboarding/Step4AllSetScreen';
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
@@ -22,6 +23,7 @@ export const OnboardingNavigator: React.FC = () => {
         <Stack.Screen name="OnboardingStep1" component={Step1ProfileScreen} />
         <Stack.Screen name="OnboardingStep2" component={Step2ExpenseCategoriesScreen} />
         <Stack.Screen name="OnboardingStep3" component={Step3IncomeCategoriesScreen} />
+        <Stack.Screen name="OnboardingSuccess" component={Step4AllSetScreen} />
       </Stack.Navigator>
     </OnboardingProvider>
   );

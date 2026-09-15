@@ -33,11 +33,17 @@ export const Step3IncomeCategoriesScreen: React.FC<Props> = ({ navigation }) => 
 
   const handleFinish = async () => {
     if (!user) return;
-    await completeOnboarding(user.id, markOnboardingComplete);
+    await completeOnboarding(user.id, () => {
+      navigation.navigate('OnboardingSuccess');
+    });
   };
 
   const handleSkip = async () => {
-    if (user) await skipOnboarding(user.id, markOnboardingComplete);
+    if (user) {
+      await skipOnboarding(user.id, () => {
+        navigation.navigate('OnboardingSuccess');
+      });
+    }
   };
 
   return (
@@ -98,7 +104,7 @@ export const Step3IncomeCategoriesScreen: React.FC<Props> = ({ navigation }) => 
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <>
-              <Text style={styles.continueBtnText}>Get Started</Text>
+              <Text style={styles.continueBtnText}>Continue</Text>
               <Text style={styles.continueBtnArrow}>→</Text>
             </>
           )}
