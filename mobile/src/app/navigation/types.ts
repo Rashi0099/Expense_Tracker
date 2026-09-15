@@ -3,6 +3,12 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
+export type OnboardingStackParamList = {
+  OnboardingStep1: undefined;
+  OnboardingStep2: undefined;
+  OnboardingStep3: undefined;
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Expenses: undefined;
@@ -13,6 +19,7 @@ export type MainTabParamList = {
 
 export type RootStackParamList = {
   Auth: undefined;
+  Onboarding: undefined;
   Main: undefined;
   Income: undefined;
   Categories: undefined;

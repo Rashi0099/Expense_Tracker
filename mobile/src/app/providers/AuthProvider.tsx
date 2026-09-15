@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MobileUser, mobileAuthApi } from '../../api/services/mobileAuthApi';
 import { SecureStorage } from '../../api/client/secureStorage';
 import { tokenStore } from '../../api/client/mobileApiClient';
@@ -9,10 +10,14 @@ import { FCMPushService } from '../../services/fcmPushService';
 import { generateUUID } from '../../utils/uuid';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 
+const ONBOARDING_KEY_PREFIX = '@onboarding/completed_';
+
 interface AuthContextType {
   user: MobileUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isOnboardingCompleted: boolean;
+  markOnboardingComplete: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, baseCurrency?: string) => Promise<void>;
   loginWithPhone: (idToken: string, baseCurrency?: string) => Promise<void>;
@@ -28,6 +33,8 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  isOnboardingCompleted: false,
+  markOnboardingComplete: () => {},
   login: async () => {},
   register: async () => {},
   loginWithPhone: async () => {},
@@ -43,12 +50,17 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<MobileUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(false);
   const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
 
   const consumePendingDeepLink = () => {
     const link = pendingDeepLink;
     if (link) setPendingDeepLink(null);
     return link;
+  };
+
+  const markOnboardingComplete = () => {
+    setIsOnboardingCompleted(true);
   };
 
   // Initialize session and SQLite on launch
@@ -79,6 +91,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           SyncEngine.getInstance().init();
           SyncEngine.getInstance().sync().catch(() => {});
           FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
+
+          // Check if onboarding was already completed for this user
+          const onboardingFlag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`);
+          setIsOnboardingCompleted(!!onboardingFlag);
         }
       } catch (err) {
         // Fail gracefully
@@ -107,6 +123,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
   };
 
   const register = async (email: string, password: string, baseCurrency = 'USD') => {
@@ -126,6 +144,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
   };
 
   const loginWithPhone = async (idToken: string, baseCurrency = 'INR') => {
@@ -145,6 +165,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
   };
 
   const loginWithPhoneOtp = async (phoneNumber: string, otp: string, baseCurrency = 'INR') => {
@@ -164,6 +186,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
   };
 
   const logout = async () => {
@@ -177,6 +201,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       tokenStore.setAccessToken(null);
       await SecureStorage.clearAll();
       setUser(null);
+      setIsOnboardingCompleted(false);
       DatabaseManager.getInstance().setCurrentUser(null);
       SyncEngine.getInstance().reset();
       FCMPushService.getInstance().unregisterDevicePushToken().catch(() => {});
@@ -201,6 +226,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         isAuthenticated: !!user,
         isLoading,
+        isOnboardingCompleted,
+        markOnboardingComplete,
         login,
         register,
         loginWithPhone,

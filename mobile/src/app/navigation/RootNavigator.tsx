@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { AuthNavigator } from './AuthNavigator';
 import { MainTabNavigator } from './MainTabNavigator';
+import { OnboardingNavigator } from './OnboardingNavigator';
 import { IncomeScreen } from '../../screens/income/IncomeScreen';
 import { CategoriesScreen } from '../../screens/categories/CategoriesScreen';
 import { RecurringExpensesScreen } from '../../screens/recurring/RecurringExpensesScreen';
@@ -65,6 +66,7 @@ export const RootNavigator: React.FC = () => {
   const {
     isAuthenticated,
     isLoading,
+    isOnboardingCompleted,
     pendingDeepLink,
     setPendingDeepLink,
     consumePendingDeepLink,
@@ -137,6 +139,8 @@ export const RootNavigator: React.FC = () => {
       >
         {!isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : !isOnboardingCompleted ? (
+          <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (
           <>
             <Stack.Screen name="Main" component={MainTabNavigator} />
