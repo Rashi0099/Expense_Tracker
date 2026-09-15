@@ -140,10 +140,18 @@ export const RootNavigator: React.FC = () => {
         {!isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         ) : !isOnboardingCompleted ? (
-          <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+          <Stack.Screen
+            name="Onboarding"
+            component={OnboardingNavigator}
+            options={{ animation: 'fade' }}
+          />
         ) : (
           <>
-            <Stack.Screen name="Main" component={MainTabNavigator} />
+            <Stack.Screen
+              name="Main"
+              component={MainTabNavigator}
+              options={{ animation: 'fade' }}
+            />
             <Stack.Screen
               name="Income"
               component={IncomeScreen}
