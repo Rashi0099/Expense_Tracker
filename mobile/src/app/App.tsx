@@ -13,20 +13,23 @@ export const App: React.FC = () => {
     // Initialize 3x daily reminder alarms
     reminderService.init().catch(() => {});
 
-    // Silent background check for updates after startup
+    // Background check for updates after startup
     const timer = setTimeout(async () => {
       try {
         const update = await hotUpdateService.checkForUpdate();
         if (update.isAvailable && update.bundleUrl && update.latestVersion) {
-          await hotUpdateService.downloadUpdate(
+          const downloaded = await hotUpdateService.downloadUpdate(
             update.bundleUrl,
             update.latestVersion
           );
+          if (downloaded) {
+            hotUpdateService.reloadApp();
+          }
         }
       } catch {
         // Silent catch for background check
       }
-    }, 4000);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, []);

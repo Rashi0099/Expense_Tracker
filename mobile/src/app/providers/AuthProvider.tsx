@@ -91,20 +91,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const refreshToken = await SecureStorage.getRefreshToken();
 
         if (cachedUser && refreshToken) {
+          // Test user 9999999999 always sees onboarding on each app entry
+          let onboardingDone = false;
+          if (isTestPhoneNumber(cachedUser.phoneNumber)) {
+            await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`);
+            onboardingDone = false;
+          } else {
+            const onboardingFlag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`);
+            onboardingDone = !!onboardingFlag;
+          }
+
+          setIsOnboardingCompleted(onboardingDone);
           setUser(cachedUser);
           DatabaseManager.getInstance().setCurrentUser(cachedUser.id);
           SyncEngine.getInstance().init();
           SyncEngine.getInstance().sync().catch(() => {});
           FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
-
-          // Test user 9999999999 always sees onboarding on each app entry
-          if (isTestPhoneNumber(cachedUser.phoneNumber)) {
-            await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`);
-            setIsOnboardingCompleted(false);
-          } else {
-            const onboardingFlag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`);
-            setIsOnboardingCompleted(!!onboardingFlag);
-          }
         }
       } catch (err) {
         // Fail gracefully
@@ -128,13 +130,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await SecureStorage.setRefreshToken(res.tokens.refreshToken);
     await SecureStorage.setUserData(res.user);
 
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
-    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-    setIsOnboardingCompleted(!!flag);
   };
 
   const register = async (email: string, password: string, baseCurrency = 'USD') => {
@@ -149,13 +151,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await SecureStorage.setRefreshToken(res.tokens.refreshToken);
     await SecureStorage.setUserData(res.user);
 
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
-    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-    setIsOnboardingCompleted(!!flag);
   };
 
   const loginWithPhone = async (idToken: string, baseCurrency = 'INR') => {
@@ -170,19 +172,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await SecureStorage.setRefreshToken(res.tokens.refreshToken);
     await SecureStorage.setUserData(res.user);
 
+    let onboardingDone = false;
+    if (isTestPhoneNumber(res.user.phoneNumber)) {
+      await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+      onboardingDone = false;
+    } else {
+      const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+      onboardingDone = !!flag;
+    }
+    setIsOnboardingCompleted(onboardingDone);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
-
-    if (isTestPhoneNumber(res.user.phoneNumber)) {
-      await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      setIsOnboardingCompleted(false);
-    } else {
-      const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      setIsOnboardingCompleted(!!flag);
-    }
   };
 
   const loginWithPhoneOtp = async (phoneNumber: string, otp: string, baseCurrency = 'INR') => {
@@ -197,19 +200,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await SecureStorage.setRefreshToken(res.tokens.refreshToken);
     await SecureStorage.setUserData(res.user);
 
+    let onboardingDone = false;
+    if (isTestPhoneNumber(phoneNumber) || isTestPhoneNumber(res.user.phoneNumber)) {
+      await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+      onboardingDone = false;
+    } else {
+      const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+      onboardingDone = !!flag;
+    }
+    setIsOnboardingCompleted(onboardingDone);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
-
-    if (isTestPhoneNumber(phoneNumber) || isTestPhoneNumber(res.user.phoneNumber)) {
-      await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      setIsOnboardingCompleted(false);
-    } else {
-      const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      setIsOnboardingCompleted(!!flag);
-    }
   };
 
   const logout = async () => {
