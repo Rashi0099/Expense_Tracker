@@ -329,6 +329,62 @@ export const IconRecurring: React.FC<{ color: string; size?: number }> = ({
   );
 };
 
+/**
+ * Modern Wallet Icon
+ * Minimalist monochrome wallet with flap and clasp dot.
+ */
+export const IconWallet: React.FC<{ color: string; size?: number }> = ({
+  color,
+  size = 20,
+}) => {
+  const width = size;
+  const height = Math.round(size * 0.76);
+
+  return (
+    <View style={[styles.center, { width: size, height: size }]}>
+      <View
+        style={{
+          width,
+          height,
+          borderRadius: 4,
+          borderWidth: 1.6,
+          borderColor: color,
+          justifyContent: 'center',
+          overflow: 'visible',
+        }}
+      >
+        {/* Wallet clasp/flap on the right */}
+        <View
+          style={{
+            position: 'absolute',
+            right: -2,
+            width: Math.round(size * 0.36),
+            height: Math.round(size * 0.42),
+            borderTopLeftRadius: 3,
+            borderBottomLeftRadius: 3,
+            borderWidth: 1.6,
+            borderRightWidth: 0,
+            borderColor: color,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'transparent',
+          }}
+        >
+          {/* Inner clasp dot */}
+          <View
+            style={{
+              width: 3,
+              height: 3,
+              borderRadius: 1.5,
+              backgroundColor: color,
+            }}
+          />
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   center: {
     alignItems: 'center',

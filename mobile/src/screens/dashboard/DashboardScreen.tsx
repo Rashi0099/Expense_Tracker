@@ -32,13 +32,19 @@ import { formatDisplayDate, getCurrentMonthString } from '../../utils/date';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 import { APP_LOGO } from '../../assets/appLogo';
 import { CashflowOverviewCard } from './components/CashflowOverviewCard';
+import { useWallet } from '../../app/providers/WalletProvider';
+import { IconWallet } from '../../components/common/NavIcons';
+import { BottomSheet } from '../../components/common/BottomSheet';
 
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { isOffline } = useNetworkState();
   const { syncNow } = useSync();
+  const { activeWallet, activeWalletId, wallets, setActiveWalletId } = useWallet();
+
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   const [summary, setSummary] = useState<DashboardSummary>({
     netBalanceCents: 0,
@@ -58,7 +64,7 @@ export const DashboardScreen: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       const [sum, budget] = await Promise.all([
-        getDashboardSummaryUseCase(),
+        getDashboardSummaryUseCase(undefined, activeWalletId || undefined),
         getMonthlyBudgetOverviewUseCase(getCurrentMonthString()),
       ]);
       setSummary(sum);
@@ -70,7 +76,7 @@ export const DashboardScreen: React.FC = () => {
     } catch {
       // Handled
     }
-  }, []);
+  }, [activeWalletId]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -124,10 +130,12 @@ export const DashboardScreen: React.FC = () => {
     const unsubExp = DataEvents.subscribe('EXPENSES_CHANGED', handleDataChange);
     const unsubInc = DataEvents.subscribe('INCOME_CHANGED', handleDataChange);
     const unsubBud = DataEvents.subscribe('BUDGETS_CHANGED', handleDataChange);
+    const unsubWal = DataEvents.subscribe('WALLETS_CHANGED', handleDataChange);
     return () => {
       unsubExp();
       unsubInc();
       unsubBud();
+      unsubWal();
     };
   }, [loadData]);
 
@@ -158,11 +166,36 @@ export const DashboardScreen: React.FC = () => {
           />
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>CashFlow</Text>
         </View>
+
+        {/* Top-Right Wallet Switcher Button */}
+        <TouchableOpacity
+          style={[
+            styles.walletSwitchBtn,
+            {
+              backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+              borderColor: isDark ? '#334155' : '#E2E8F0',
+            },
+          ]}
+          onPress={() => setShowWalletModal(true)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Active wallet: ${activeWallet?.name || 'Wallet 1'}. Tap to switch.`}
+        >
+          <IconWallet color={theme.colors.primary} size={15} />
+          <Text
+            style={[styles.walletSwitchBtnText, { color: theme.colors.textPrimary }]}
+            numberOfLines={1}
+          >
+            {activeWallet?.name || 'Wallet 1'}
+          </Text>
+          <Text style={[styles.walletSwitchChevron, { color: theme.colors.textMuted }]}>▾</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Standalone Cashflow Overview Card (Total Balance + Side-by-side Income & Expenses) */}
       <CashflowOverviewCard
         currency={currency}
+        walletId={activeWalletId || undefined}
         onNavigateIncome={() => navigation.navigate('Expenses', { tab: 'INCOME' })}
         onNavigateExpenses={() => navigation.navigate('Expenses', { tab: 'EXPENSE' })}
         refreshTrigger={refreshTrigger}
@@ -365,6 +398,101 @@ export const DashboardScreen: React.FC = () => {
           })
         )}
       </View>
+
+      {/* Wallet Switcher BottomSheet */}
+      <BottomSheet
+        visible={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        title="Select Wallet"
+      >
+        <View style={styles.walletModalContent}>
+          <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+            {wallets.map((wallet) => {
+              const isSelected = wallet.id === activeWalletId;
+              return (
+                <TouchableOpacity
+                  key={wallet.id}
+                  style={[
+                    styles.walletItemRow,
+                    isSelected && {
+                      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
+                      borderColor: isDark ? '#1D4ED8' : '#BFDBFE',
+                    },
+                  ]}
+                  onPress={async () => {
+                    await setActiveWalletId(wallet.id);
+                    setShowWalletModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.walletItemLeft}>
+                    <Text
+                      style={[
+                        styles.walletItemCheck,
+                        { color: isSelected ? theme.colors.primary : 'transparent' },
+                      ]}
+                    >
+                      ✓
+                    </Text>
+                    <View>
+                      <Text
+                        style={[
+                          styles.walletItemName,
+                          {
+                            color: theme.colors.textPrimary,
+                            fontWeight: isSelected ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {wallet.name}
+                      </Text>
+                      {wallet.isDefault && (
+                        <Text style={[styles.walletItemDefaultTag, { color: theme.colors.textMuted }]}>
+                          Default
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <Text
+                    style={[
+                      styles.walletItemBalance,
+                      {
+                        color:
+                          (wallet.balanceCents || 0) >= 0
+                            ? theme.colors.textPrimary
+                            : theme.colors.expense,
+                        fontWeight: isSelected ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    <CurrencyText amountCents={wallet.balanceCents || 0} currency={currency} />
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Add / Manage Wallet Button */}
+          <TouchableOpacity
+            style={[
+              styles.manageWalletsBtn,
+              {
+                backgroundColor: theme.colors.surfaceSubtle,
+                borderColor: theme.colors.surfaceBorder,
+              },
+            ]}
+            onPress={() => {
+              setShowWalletModal(false);
+              navigation.navigate('Wallets');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.manageWalletsBtnText, { color: theme.colors.primary }]}>
+              ⚙️ Add / Manage Wallet
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
     </Screen>
   );
 };
@@ -393,6 +521,75 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.3,
+  },
+  walletSwitchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  walletSwitchBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    maxWidth: 90,
+  },
+  walletSwitchChevron: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  walletModalContent: {
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  walletItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 6,
+  },
+  walletItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  walletItemCheck: {
+    fontSize: 16,
+    fontWeight: '800',
+    width: 20,
+    textAlign: 'center',
+  },
+  walletItemName: {
+    fontSize: 15,
+    letterSpacing: -0.2,
+  },
+  walletItemDefaultTag: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  walletItemBalance: {
+    fontSize: 14,
+  },
+  manageWalletsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  manageWalletsBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   bellButton: {
     width: 38,

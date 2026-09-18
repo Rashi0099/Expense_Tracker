@@ -14,6 +14,7 @@ import { OnboardingNavigator } from './OnboardingNavigator';
 import { IncomeScreen } from '../../screens/income/IncomeScreen';
 import { CategoriesScreen } from '../../screens/categories/CategoriesScreen';
 import { RecurringExpensesScreen } from '../../screens/recurring/RecurringExpensesScreen';
+import { WalletsScreen } from '../../screens/wallets/WalletsScreen';
 import { useAuth } from '../providers/AuthProvider';
 import { LoadingState } from '../../components/common/LoadingState';
 import { useTheme } from '../../theme/useTheme';
@@ -183,6 +184,13 @@ export const RootNavigator: React.FC = () => {
                 headerBackTitle: 'Back',
                 headerTintColor: theme.colors.textPrimary,
                 headerStyle: { backgroundColor: theme.colors.surface },
+              }}
+            />
+            <Stack.Screen
+              name="Wallets"
+              component={WalletsScreen}
+              options={{
+                headerShown: false,
               }}
             />
           </>

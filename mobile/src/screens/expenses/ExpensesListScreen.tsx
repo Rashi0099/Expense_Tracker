@@ -167,9 +167,14 @@ export const ExpensesListScreen: React.FC = () => {
     const unsubInc = DataEvents.subscribe('INCOME_CHANGED', () => {
       loadIncomes();
     });
+    const unsubWallets = DataEvents.subscribe('WALLETS_CHANGED', () => {
+      loadExpenses(true);
+      loadIncomes();
+    });
     return () => {
       unsubExp();
       unsubInc();
+      unsubWallets();
     };
   }, [loadExpenses, loadIncomes]);
 
@@ -529,6 +534,7 @@ export const ExpensesListScreen: React.FC = () => {
                       <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
                         {item.paymentMethod.replace('_', ' ')}
                         {item.categoryName ? ` • ${item.categoryName}` : ''}
+                        {item.walletName ? ` • ${item.walletName}` : ''}
                       </Text>
                     </View>
                   </View>
@@ -613,6 +619,7 @@ export const ExpensesListScreen: React.FC = () => {
                     <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
                       {item.paymentMethod ? item.paymentMethod.replace('_', ' ') : 'INCOME'}
                       {item.categoryName ? ` • ${item.categoryName}` : ''}
+                      {item.walletName ? ` • ${item.walletName}` : ''}
                       {item.note ? ` • ${item.note}` : ''}
                     </Text>
                   </View>

@@ -36,11 +36,26 @@ CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_categories_type ON categories(type);
 `;
 
+export const WALLETS_TABLE = `
+CREATE TABLE IF NOT EXISTS wallets (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  is_default INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  version INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);
+`;
+
 export const EXPENSES_TABLE = `
 CREATE TABLE IF NOT EXISTS expenses (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   category_id TEXT NOT NULL,
+  wallet_id TEXT,
   amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
   currency TEXT NOT NULL DEFAULT 'USD',
   transaction_date TEXT NOT NULL,
@@ -55,6 +70,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_wallet ON expenses(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(transaction_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_deleted ON expenses(deleted_at);
@@ -65,6 +81,7 @@ CREATE TABLE IF NOT EXISTS income (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   category_id TEXT NOT NULL,
+  wallet_id TEXT,
   amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
   currency TEXT NOT NULL DEFAULT 'USD',
   transaction_date TEXT NOT NULL,
@@ -79,6 +96,7 @@ CREATE TABLE IF NOT EXISTS income (
   FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 CREATE INDEX IF NOT EXISTS idx_income_user ON income(user_id);
+CREATE INDEX IF NOT EXISTS idx_income_wallet ON income(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_income_date ON income(transaction_date);
 CREATE INDEX IF NOT EXISTS idx_income_deleted ON income(deleted_at);
 `;

@@ -8,3 +8,4 @@ export * from './budgetUseCases';
 export * from './categoryUseCases';
 export * from './recurringUseCases';
 export * from './dashboardUseCases';
+export * from './walletUseCases';

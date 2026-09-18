@@ -5,6 +5,7 @@ import {
   SQLiteBudgetRow,
   SQLiteRecurringExpenseRow,
   SQLiteSyncOutboxRow,
+  SQLiteWalletRow,
 } from '../../database/schema/types';
 import {
   CategoryModel,
@@ -13,9 +14,26 @@ import {
   BudgetModel,
   RecurringExpenseModel,
   SyncOutboxItem,
+  WalletModel,
   PaymentMethod,
   RecurringFrequency,
 } from '../models';
+
+export const WalletMapper = {
+  toDomain(row: SQLiteWalletRow, balanceCents?: number): WalletModel {
+    return {
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      isDefault: row.is_default === 1,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      deletedAt: row.deleted_at,
+      version: row.version,
+      balanceCents,
+    };
+  },
+};
 
 export const CategoryMapper = {
   toDomain(row: SQLiteCategoryRow): CategoryModel {
@@ -41,6 +59,7 @@ export const ExpenseMapper = {
       id: row.id,
       userId: row.user_id,
       categoryId: row.category_id,
+      walletId: row.wallet_id || undefined,
       amountCents: row.amount_cents,
       currency: row.currency,
       transactionDate: row.transaction_date,
@@ -55,6 +74,7 @@ export const ExpenseMapper = {
       categoryName: row.category_name,
       categoryIcon: row.category_icon,
       categoryColor: row.category_color,
+      walletName: row.wallet_name,
     };
   },
 };
@@ -65,6 +85,7 @@ export const IncomeMapper = {
       id: row.id,
       userId: row.user_id,
       categoryId: row.category_id,
+      walletId: row.wallet_id || undefined,
       amountCents: row.amount_cents,
       currency: row.currency,
       transactionDate: row.transaction_date,
@@ -79,6 +100,7 @@ export const IncomeMapper = {
       categoryName: row.category_name,
       categoryIcon: row.category_icon,
       categoryColor: row.category_color,
+      walletName: row.wallet_name,
     };
   },
 };

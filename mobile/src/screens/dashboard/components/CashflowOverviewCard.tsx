@@ -77,6 +77,7 @@ export function getDateRangeForFilter(filter: DashboardFilter): { startDate?: st
 
 export interface CashflowOverviewCardProps {
   currency?: string;
+  walletId?: string;
   onNavigateIncome?: () => void;
   onNavigateExpenses?: () => void;
   onFilterChange?: (filter: DashboardFilter) => void;
@@ -85,6 +86,7 @@ export interface CashflowOverviewCardProps {
 
 export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
   currency = 'USD',
+  walletId,
   onNavigateIncome,
   onNavigateExpenses,
   onFilterChange,
@@ -107,9 +109,9 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
     try {
       const dateRange = getDateRangeForFilter(filter);
       const [res, trend] = await Promise.all([
-        getCashflowMetricsUseCase(dateRange),
+        getCashflowMetricsUseCase(dateRange, walletId),
         dateRange.startDate && dateRange.endDate
-          ? getBalanceTrendUseCase({ startDate: dateRange.startDate, endDate: dateRange.endDate })
+          ? getBalanceTrendUseCase({ startDate: dateRange.startDate, endDate: dateRange.endDate }, 14, walletId)
           : Promise.resolve([]),
       ]);
       setMetrics(res);
@@ -117,20 +119,22 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
     } catch {
       // Handled
     }
-  }, []);
+  }, [walletId]);
 
   // Initial load and filter updates
   useEffect(() => {
     fetchMetrics(selectedFilter);
-  }, [fetchMetrics, selectedFilter, refreshTrigger]);
+  }, [fetchMetrics, selectedFilter, refreshTrigger, walletId]);
 
-  // Reactive updates on transaction changes
+  // Reactive updates on transaction and wallet changes
   useEffect(() => {
     const unsubExp = DataEvents.subscribe('EXPENSES_CHANGED', () => fetchMetrics(selectedFilter));
     const unsubInc = DataEvents.subscribe('INCOME_CHANGED', () => fetchMetrics(selectedFilter));
+    const unsubWallets = DataEvents.subscribe('WALLETS_CHANGED', () => fetchMetrics(selectedFilter));
     return () => {
       unsubExp();
       unsubInc();
+      unsubWallets();
     };
   }, [fetchMetrics, selectedFilter]);
 

@@ -12,7 +12,8 @@ export type DataEventType =
   | 'BUDGETS_CHANGED'
   | 'CATEGORIES_CHANGED'
   | 'RECURRING_CHANGED'
-  | 'SYNC_OUTBOX_CHANGED';
+  | 'SYNC_OUTBOX_CHANGED'
+  | 'WALLETS_CHANGED';
 
 type EventListener = () => void;
 

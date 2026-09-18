@@ -35,15 +35,34 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     const paymentMethod = params.paymentMethod || 'BANK_TRANSFER';
 
     return db.transaction(async (tx) => {
+      // 1. Resolve walletId (use provided or user's default/first active wallet)
+      let walletId = params.walletId;
+      if (!walletId) {
+        const defaultWalletRes = await tx.executeSql<{ id: string }>(
+          'SELECT id FROM wallets WHERE user_id = ? AND is_default = 1 AND deleted_at IS NULL LIMIT 1',
+          [userId]
+        );
+        if (defaultWalletRes.rows.length > 0) {
+          walletId = defaultWalletRes.rows[0].id;
+        } else {
+          const anyWalletRes = await tx.executeSql<{ id: string }>(
+            'SELECT id FROM wallets WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
+            [userId]
+          );
+          walletId = anyWalletRes.rows[0]?.id;
+        }
+      }
+
       await tx.executeSql(
         `INSERT INTO income (
-          id, user_id, category_id, amount_cents, currency, transaction_date,
+          id, user_id, category_id, wallet_id, amount_cents, currency, transaction_date,
           payment_method, source, note, created_at, updated_at, deleted_at, version, sync_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, 'PENDING')`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, 'PENDING')`,
         [
           incomeId,
           userId,
           params.categoryId,
+          walletId || null,
           params.amountCents,
           currency,
           params.transactionDate,
@@ -58,6 +77,7 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
       const payload = JSON.stringify({
         id: incomeId,
         categoryId: params.categoryId,
+        walletId: walletId || null,
         amount: centsToDollars(params.amountCents),
         currency,
         transactionDate: params.transactionDate,
@@ -79,6 +99,7 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
         id: incomeId,
         userId,
         categoryId: params.categoryId,
+        walletId: walletId || undefined,
         amountCents: params.amountCents,
         currency,
         transactionDate: params.transactionDate,
@@ -106,6 +127,7 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     const outboxId = generateUUID();
 
     const categoryId = params.categoryId || existing.categoryId;
+    const walletId = params.walletId !== undefined ? params.walletId : existing.walletId;
     const amountCents = params.amountCents !== undefined ? params.amountCents : existing.amountCents;
     const currency = params.currency || existing.currency;
     const transactionDate = params.transactionDate || existing.transactionDate;
@@ -116,11 +138,12 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     return db.transaction(async (tx) => {
       await tx.executeSql(
         `UPDATE income SET
-          category_id = ?, amount_cents = ?, currency = ?, transaction_date = ?,
+          category_id = ?, wallet_id = ?, amount_cents = ?, currency = ?, transaction_date = ?,
           payment_method = ?, source = ?, note = ?, updated_at = ?, version = ?, sync_status = 'PENDING'
         WHERE id = ? AND user_id = ?`,
         [
           categoryId,
+          walletId || null,
           amountCents,
           currency,
           transactionDate,
@@ -136,6 +159,7 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
 
       const payload = JSON.stringify({
         categoryId,
+        walletId: walletId || null,
         amount: centsToDollars(amountCents),
         currency,
         transactionDate,
@@ -155,6 +179,7 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
       return {
         ...existing,
         categoryId,
+        walletId,
         amountCents,
         currency,
         transactionDate,
@@ -198,9 +223,10 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     const userId = this.getUserId();
 
     const res = await db.executeSql<SQLiteIncomeRow>(
-      `SELECT i.*, c.name as category_name, c.icon as category_icon, c.color as category_color
+      `SELECT i.*, c.name as category_name, c.icon as category_icon, c.color as category_color, w.name as wallet_name
        FROM income i
        LEFT JOIN categories c ON i.category_id = c.id
+       LEFT JOIN wallets w ON i.wallet_id = w.id
        WHERE i.id = ? AND i.user_id = ? AND i.deleted_at IS NULL`,
       [id, userId]
     );
@@ -214,9 +240,10 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     const userId = this.getUserId();
 
     let query = `
-      SELECT i.*, c.name as category_name, c.icon as category_icon, c.color as category_color
+      SELECT i.*, c.name as category_name, c.icon as category_icon, c.color as category_color, w.name as wallet_name
       FROM income i
       LEFT JOIN categories c ON i.category_id = c.id
+      LEFT JOIN wallets w ON i.wallet_id = w.id
       WHERE i.user_id = ? AND i.deleted_at IS NULL
     `;
     const params: unknown[] = [userId];
@@ -224,6 +251,10 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     if (filters?.categoryId) {
       query += ` AND i.category_id = ?`;
       params.push(filters.categoryId);
+    }
+    if (filters?.walletId) {
+      query += ` AND i.wallet_id = ?`;
+      params.push(filters.walletId);
     }
     if (filters?.paymentMethod) {
       query += ` AND i.payment_method = ?`;
@@ -257,7 +288,7 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     return res.rows.map(IncomeMapper.toDomain);
   }
 
-  async getTotalCents(startDate?: string, endDate?: string): Promise<number> {
+  async getTotalCents(startDate?: string, endDate?: string, walletId?: string): Promise<number> {
     const db = this.getDb();
     const userId = this.getUserId();
 
@@ -271,6 +302,10 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
     if (endDate) {
       query += ` AND transaction_date <= ?`;
       params.push(endDate);
+    }
+    if (walletId) {
+      query += ` AND wallet_id = ?`;
+      params.push(walletId);
     }
 
     const res = await db.executeSql<{ total: number | null }>(query, params);

@@ -22,6 +22,7 @@ import { dollarsToCents, centsToDollars } from '../../../utils/money';
 import { getTodayDateString } from '../../../utils/date';
 import { useTheme } from '../../../theme/useTheme';
 import { useAuth } from '../../../app/providers/AuthProvider';
+import { useWallet } from '../../../app/providers/WalletProvider';
 
 interface IncomeEditModalProps {
   visible: boolean;
@@ -38,9 +39,11 @@ export const IncomeEditModal: React.FC<IncomeEditModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { activeWalletId, wallets } = useWallet();
 
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('');
   const [source, setSource] = useState('');
   const [note, setNote] = useState('');
   const [transactionDate, setTransactionDate] = useState('');
@@ -69,18 +72,20 @@ export const IncomeEditModal: React.FC<IncomeEditModalProps> = ({
     if (income) {
       setAmount(centsToDollars(income.amountCents));
       setCategoryId(income.categoryId);
+      setSelectedWalletId(income.walletId || activeWalletId || (wallets[0]?.id ?? ''));
       setSource(income.source);
       setNote(income.note || '');
       setTransactionDate(income.transactionDate);
       setError(null);
     } else {
       setAmount('');
+      setSelectedWalletId(activeWalletId || (wallets[0]?.id ?? ''));
       setSource('');
       setNote('');
       setTransactionDate(getTodayDateString());
       setError(null);
     }
-  }, [income, visible]);
+  }, [income, visible, activeWalletId, wallets]);
 
   if (!visible) return null;
 
@@ -106,6 +111,7 @@ export const IncomeEditModal: React.FC<IncomeEditModalProps> = ({
       if (income) {
         await updateIncomeUseCase(income.id, {
           categoryId,
+          walletId: selectedWalletId || undefined,
           amountCents: cents,
           source: source.trim(),
           note: note.trim() || undefined,
@@ -114,6 +120,7 @@ export const IncomeEditModal: React.FC<IncomeEditModalProps> = ({
       } else {
         await createIncomeUseCase({
           categoryId,
+          walletId: selectedWalletId || activeWalletId || undefined,
           amountCents: cents,
           currency: user?.baseCurrency || 'USD',
           source: source.trim(),
@@ -188,6 +195,53 @@ export const IncomeEditModal: React.FC<IncomeEditModalProps> = ({
               currency={user?.baseCurrency || 'USD'}
               error={error || undefined}
             />
+
+            {/* Wallet Selector */}
+            {wallets.length > 0 && (
+              <View style={{ marginBottom: 14 }}>
+                <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
+                  Wallet
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipRow}
+                >
+                  {wallets.map((w) => {
+                    const isSelected = (selectedWalletId || activeWalletId) === w.id;
+                    return (
+                      <TouchableOpacity
+                        key={w.id}
+                        onPress={() => setSelectedWalletId(w.id)}
+                        style={[
+                          styles.chip,
+                          {
+                            backgroundColor: isSelected
+                              ? theme.colors.income
+                              : theme.colors.surfaceSubtle,
+                            borderColor: isSelected
+                              ? theme.colors.income
+                              : theme.colors.surfaceBorder,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            {
+                              color: isSelected ? '#FFFFFF' : theme.colors.textPrimary,
+                              fontWeight: isSelected ? '700' : '500',
+                            },
+                          ]}
+                        >
+                          {isSelected ? '✓ ' : ''}{w.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Category Selector */}
             <Text style={[styles.label, { color: theme.colors.textSecondary }]}>

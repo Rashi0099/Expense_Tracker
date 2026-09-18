@@ -16,6 +16,7 @@ import { updateExpenseUseCase, deleteExpenseUseCase } from '../../../domain/usec
 import { listCategoriesUseCase } from '../../../domain/usecases/categoryUseCases';
 import { dollarsToCents, centsToDollars } from '../../../utils/money';
 import { useTheme } from '../../../theme/useTheme';
+import { useWallet } from '../../../app/providers/WalletProvider';
 import { PAYMENT_METHODS } from '../../../app/config/constants';
 
 interface ExpenseEditModalProps {
@@ -32,9 +33,11 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
   onSuccess,
 }) => {
   const { theme } = useTheme();
+  const { activeWalletId, wallets } = useWallet();
 
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
   const [payee, setPayee] = useState('');
   const [note, setNote] = useState('');
@@ -61,13 +64,14 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
     if (expense) {
       setAmount(centsToDollars(expense.amountCents));
       setCategoryId(expense.categoryId);
+      setSelectedWalletId(expense.walletId || activeWalletId || (wallets[0]?.id ?? ''));
       setPaymentMethod(expense.paymentMethod);
       setPayee(expense.payee || '');
       setNote(expense.note || '');
       setTransactionDate(expense.transactionDate);
       setError(null);
     }
-  }, [expense]);
+  }, [expense, activeWalletId, wallets]);
 
   if (!expense) return null;
 
@@ -88,6 +92,7 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
     try {
       await updateExpenseUseCase(expense.id, {
         categoryId,
+        walletId: selectedWalletId || undefined,
         amountCents: cents,
         paymentMethod,
         payee: payee.trim() || undefined,
@@ -151,6 +156,43 @@ export const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
               currency={expense.currency}
               error={error || undefined}
             />
+
+            {/* Wallet Selector */}
+            {wallets.length > 0 && (
+              <View style={{ marginBottom: 14 }}>
+                <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Wallet</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                  {wallets.map((w) => {
+                    const isSelected = (selectedWalletId || activeWalletId) === w.id;
+                    return (
+                      <TouchableOpacity
+                        key={w.id}
+                        onPress={() => setSelectedWalletId(w.id)}
+                        style={[
+                          styles.categoryChip,
+                          {
+                            backgroundColor: isSelected ? theme.colors.primary : theme.colors.surfaceSubtle,
+                            borderColor: isSelected ? theme.colors.primary : theme.colors.surfaceBorder,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            {
+                              color: isSelected ? theme.colors.textInverse : theme.colors.textPrimary,
+                              fontWeight: isSelected ? '700' : '500',
+                            },
+                          ]}
+                        >
+                          {isSelected ? '✓ ' : ''}{w.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Category selection */}
             <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Category</Text>

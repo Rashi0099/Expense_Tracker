@@ -1,6 +1,7 @@
 import { ISQLiteDatabase } from '../DatabaseConnection';
 import { SCHEMA_MIGRATIONS_TABLE } from '../../schema/tables';
 import { migration001 } from './001_initial_schema';
+import { migration002 } from './002_wallets';
 import { getUTCTimestamp } from '../../../utils/date';
 
 export interface Migration {
@@ -9,7 +10,7 @@ export interface Migration {
   up: (db: ISQLiteDatabase) => Promise<void>;
 }
 
-const ALL_MIGRATIONS: Migration[] = [migration001];
+const ALL_MIGRATIONS: Migration[] = [migration001, migration002];
 
 export class MigrationRunner {
   private db: ISQLiteDatabase;

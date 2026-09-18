@@ -28,12 +28,14 @@ import { listCategoriesUseCase } from '../../domain/usecases/categoryUseCases';
 import { dollarsToCents, centsToDollars } from '../../utils/money';
 import { formatDisplayDate, getTodayDateString } from '../../utils/date';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { useWallet } from '../../app/providers/WalletProvider';
 import { useTheme } from '../../theme/useTheme';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 
 export const IncomeScreen: React.FC = () => {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { activeWalletId, wallets } = useWallet();
 
   const [incomeList, setIncomeList] = useState<IncomeModel[]>([]);
   const [totalIncomeCents, setTotalIncomeCents] = useState(0);
@@ -46,6 +48,7 @@ export const IncomeScreen: React.FC = () => {
   const [editingItem, setEditingItem] = useState<IncomeModel | null>(null);
   const [amount, setAmount] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>('');
   const [source, setSource] = useState('');
   const [note, setNote] = useState('');
   const [transactionDate, setTransactionDate] = useState('');
@@ -91,10 +94,16 @@ export const IncomeScreen: React.FC = () => {
 
   // Subscribe to reactive data events
   useEffect(() => {
-    const unsub = DataEvents.subscribe('INCOME_CHANGED', () => {
+    const unsubIncome = DataEvents.subscribe('INCOME_CHANGED', () => {
       loadData();
     });
-    return unsub;
+    const unsubWallets = DataEvents.subscribe('WALLETS_CHANGED', () => {
+      loadData();
+    });
+    return () => {
+      unsubIncome();
+      unsubWallets();
+    };
   }, [loadData]);
 
   const openAddModal = () => {
@@ -103,6 +112,7 @@ export const IncomeScreen: React.FC = () => {
     setSource('');
     setNote('');
     setTransactionDate(getTodayDateString());
+    setSelectedWalletId(activeWalletId || (wallets[0]?.id ?? ''));
     if (categories.length > 0) {
       setSelectedCategoryId(categories[0].id);
     }
@@ -114,6 +124,7 @@ export const IncomeScreen: React.FC = () => {
     setEditingItem(item);
     setAmount(centsToDollars(item.amountCents));
     setSelectedCategoryId(item.categoryId);
+    setSelectedWalletId(item.walletId || activeWalletId || (wallets[0]?.id ?? ''));
     setSource(item.source);
     setNote(item.note || '');
     setTransactionDate(item.transactionDate);
@@ -143,6 +154,7 @@ export const IncomeScreen: React.FC = () => {
       if (editingItem) {
         await updateIncomeUseCase(editingItem.id, {
           categoryId: selectedCategoryId,
+          walletId: selectedWalletId || undefined,
           amountCents: cents,
           source: source.trim(),
           note: note.trim() || undefined,
@@ -151,6 +163,7 @@ export const IncomeScreen: React.FC = () => {
       } else {
         await createIncomeUseCase({
           categoryId: selectedCategoryId,
+          walletId: selectedWalletId || activeWalletId || undefined,
           amountCents: cents,
           currency: user?.baseCurrency || 'USD',
           source: source.trim(),
@@ -256,7 +269,7 @@ export const IncomeScreen: React.FC = () => {
                     {item.source}
                   </Text>
                   <Text style={[styles.metaText, { color: theme.colors.textMuted }]}>
-                    {formatDisplayDate(item.transactionDate)} • {item.categoryName || 'Income'}
+                    {formatDisplayDate(item.transactionDate)} • {item.categoryName || 'Income'}{item.walletName ? ` • ${item.walletName}` : ''}
                   </Text>
                 </View>
               </View>
@@ -301,6 +314,45 @@ export const IncomeScreen: React.FC = () => {
                 currency={user?.baseCurrency || 'USD'}
                 error={formError || undefined}
               />
+
+              {/* Wallet selector */}
+              {wallets.length > 0 && (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>
+                    Wallet
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                    {wallets.map((w) => {
+                      const isSelected = (selectedWalletId || activeWalletId) === w.id;
+                      return (
+                        <TouchableOpacity
+                          key={w.id}
+                          onPress={() => setSelectedWalletId(w.id)}
+                          style={[
+                            styles.chip,
+                            {
+                              backgroundColor: isSelected ? theme.colors.income : theme.colors.surfaceSubtle,
+                              borderColor: isSelected ? theme.colors.income : theme.colors.surfaceBorder,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              {
+                                color: isSelected ? '#FFFFFF' : theme.colors.textPrimary,
+                                fontWeight: isSelected ? '700' : '500',
+                              },
+                            ]}
+                          >
+                            {isSelected ? '✓ ' : ''}{w.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
 
               {/* Category selector */}
               <Text style={[styles.inputLabel, { color: theme.colors.textSecondary }]}>

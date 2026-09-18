@@ -17,10 +17,22 @@ export interface SQLiteCategoryRow {
   version: number;
 }
 
+export interface SQLiteWalletRow {
+  id: string;
+  user_id: string;
+  name: string;
+  is_default: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+}
+
 export interface SQLiteExpenseRow {
   id: string;
   user_id: string;
   category_id: string;
+  wallet_id?: string | null;
   amount_cents: number;
   currency: string;
   transaction_date: string;
@@ -36,12 +48,14 @@ export interface SQLiteExpenseRow {
   category_name?: string;
   category_icon?: string;
   category_color?: string;
+  wallet_name?: string;
 }
 
 export interface SQLiteIncomeRow {
   id: string;
   user_id: string;
   category_id: string;
+  wallet_id?: string | null;
   amount_cents: number;
   currency: string;
   transaction_date: string;
@@ -57,6 +71,7 @@ export interface SQLiteIncomeRow {
   category_name?: string;
   category_icon?: string;
   category_color?: string;
+  wallet_name?: string;
 }
 
 export interface SQLiteBudgetRow {

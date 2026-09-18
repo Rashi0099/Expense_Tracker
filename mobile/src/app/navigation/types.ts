@@ -25,4 +25,5 @@ export type RootStackParamList = {
   Income: undefined;
   Categories: undefined;
   Recurring: undefined;
+  Wallets: undefined;
 };

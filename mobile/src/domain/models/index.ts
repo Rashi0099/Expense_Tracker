@@ -26,10 +26,23 @@ export interface CategoryModel {
   version: number;
 }
 
+export interface WalletModel {
+  id: string;
+  userId: string;
+  name: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  version: number;
+  balanceCents?: number;
+}
+
 export interface ExpenseModel {
   id: string;
   userId: string;
   categoryId: string;
+  walletId?: string;
   amountCents: number;
   currency: string;
   transactionDate: string;
@@ -45,12 +58,14 @@ export interface ExpenseModel {
   categoryName?: string;
   categoryIcon?: string;
   categoryColor?: string;
+  walletName?: string;
 }
 
 export interface IncomeModel {
   id: string;
   userId: string;
   categoryId: string;
+  walletId?: string;
   amountCents: number;
   currency: string;
   transactionDate: string;
@@ -65,6 +80,7 @@ export interface IncomeModel {
   categoryName?: string;
   categoryIcon?: string;
   categoryColor?: string;
+  walletName?: string;
 }
 
 export interface BudgetModel {

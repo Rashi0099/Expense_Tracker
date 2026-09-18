@@ -23,6 +23,9 @@ import { dollarsToCents, getCurrencySymbol } from '../../utils/money';
 import { getTodayDateString, formatDisplayDate } from '../../utils/date';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
+import { useWallet } from '../../app/providers/WalletProvider';
+import { IconWallet } from '../../components/common/NavIcons';
+import { BottomSheet } from '../../components/common/BottomSheet';
 
 const QUICK_PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
   { label: 'Cash', value: 'CASH' },
@@ -34,12 +37,15 @@ const QUICK_PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
 export const QuickExpenseScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const { activeWallet, activeWalletId, wallets } = useWallet();
   const amountInputRef = useRef<RNTextInput>(null);
 
   const memoryRepo = useMemo(() => new SQLiteCategoryMemoryRepository(), []);
 
   const [transactionType, setTransactionType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>(activeWalletId || '');
+  const [showWalletPicker, setShowWalletPicker] = useState(false);
   const [amount, setAmount] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [categories, setCategories] = useState<CategoryModel[]>([]);
@@ -144,9 +150,11 @@ export const QuickExpenseScreen: React.FC = () => {
     setError(null);
 
     try {
+      const targetWalletId = selectedWalletId || activeWalletId || undefined;
       if (transactionType === 'INCOME') {
         await createIncomeUseCase({
           categoryId: selectedCategoryId,
+          walletId: targetWalletId,
           amountCents: cents,
           currency: user?.baseCurrency || 'INR',
           transactionDate: selectedDate,
@@ -156,6 +164,7 @@ export const QuickExpenseScreen: React.FC = () => {
       } else {
         await createExpenseUseCase({
           categoryId: selectedCategoryId,
+          walletId: targetWalletId,
           amountCents: cents,
           currency: user?.baseCurrency || 'INR',
           transactionDate: selectedDate,
@@ -258,6 +267,31 @@ export const QuickExpenseScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Wallet Switcher Pill */}
+      {wallets.length > 0 && (
+        <View style={styles.walletPillRow}>
+          <TouchableOpacity
+            style={[
+              styles.walletPill,
+              {
+                backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                borderColor: isDark ? '#334155' : '#E2E8F0',
+              },
+            ]}
+            onPress={() => setShowWalletPicker(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Wallet: ${wallets.find((w) => w.id === selectedWalletId)?.name || activeWallet?.name || 'Wallet 1'}. Tap to switch.`}
+          >
+            <IconWallet color={theme.colors.primary} size={14} />
+            <Text style={[styles.walletPillText, { color: theme.colors.textPrimary }]}>
+              {wallets.find((w) => w.id === selectedWalletId)?.name || activeWallet?.name || 'Wallet 1'}
+            </Text>
+            <Text style={[styles.walletPillChevron, { color: theme.colors.textMuted }]}>▾</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Large Amount Display: Visible and directly editable input */}
       <TouchableOpacity
@@ -648,6 +682,62 @@ export const QuickExpenseScreen: React.FC = () => {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Wallet Selection BottomSheet */}
+      <BottomSheet
+        visible={showWalletPicker}
+        onClose={() => setShowWalletPicker(false)}
+        title="Select Wallet"
+      >
+        <View style={{ paddingBottom: 24 }}>
+          {wallets.map((w) => {
+            const isSelected = (selectedWalletId || activeWalletId) === w.id;
+            return (
+              <TouchableOpacity
+                key={w.id}
+                style={[
+                  styles.walletPickerRow,
+                  isSelected && {
+                    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
+                    borderColor: isDark ? '#1D4ED8' : '#BFDBFE',
+                  },
+                ]}
+                onPress={() => {
+                  setSelectedWalletId(w.id);
+                  setShowWalletPicker(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '800',
+                      width: 20,
+                      textAlign: 'center',
+                      color: isSelected ? theme.colors.primary : 'transparent',
+                    }}
+                  >
+                    ✓
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: isSelected ? '700' : '500',
+                      color: theme.colors.textPrimary,
+                    }}
+                  >
+                    {w.name}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 13, color: theme.colors.textSecondary }}>
+                  {w.isDefault ? 'Default' : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
     </Screen>
   );
 };
@@ -655,6 +745,39 @@ export const QuickExpenseScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
+  },
+  walletPillRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  walletPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  walletPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  walletPillChevron: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  walletPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 6,
   },
   header: {
     flexDirection: 'row',

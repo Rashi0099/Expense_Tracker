@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../theme/useTheme';
 import { AuthProvider } from './providers/AuthProvider';
+import { WalletProvider } from './providers/WalletProvider';
 import { RootNavigator } from './navigation/RootNavigator';
 import { ScreenPrivacyShield } from '../components/common/ScreenPrivacyShield';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
@@ -40,7 +41,9 @@ export const App: React.FC = () => {
         <ThemeProvider>
           <ScreenPrivacyShield>
             <AuthProvider>
-              <RootNavigator />
+              <WalletProvider>
+                <RootNavigator />
+              </WalletProvider>
             </AuthProvider>
           </ScreenPrivacyShield>
         </ThemeProvider>

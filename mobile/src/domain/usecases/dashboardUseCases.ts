@@ -43,16 +43,19 @@ export interface DashboardSummary {
  * Ultra-fast isolated query for Cashflow Overview Card metrics (<2ms).
  * Runs only 2 simple integer SQL SUMs without computing lists or breakdowns.
  */
-export async function getCashflowMetricsUseCase(dateRange?: {
-  startDate?: string;
-  endDate?: string;
-}): Promise<CashflowMetrics> {
+export async function getCashflowMetricsUseCase(
+  dateRange?: {
+    startDate?: string;
+    endDate?: string;
+  },
+  walletId?: string
+): Promise<CashflowMetrics> {
   const expenseRepo = new SQLiteExpenseRepository();
   const incomeRepo = new SQLiteIncomeRepository();
 
   const [totalExpensesCents, totalIncomeCents] = await Promise.all([
-    expenseRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
-    incomeRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
+    expenseRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate, walletId),
+    incomeRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate, walletId),
   ]);
 
   const netBalanceCents = totalIncomeCents - totalExpensesCents;
@@ -70,14 +73,15 @@ export async function getCashflowMetricsUseCase(dateRange?: {
  */
 export async function getBalanceTrendUseCase(
   dateRange: { startDate: string; endDate: string },
-  points: number = 14
+  points: number = 14,
+  walletId?: string
 ): Promise<number[]> {
   const expenseRepo = new SQLiteExpenseRepository();
   const incomeRepo = new SQLiteIncomeRepository();
 
   const [expenses, incomes] = await Promise.all([
-    expenseRepo.list({ startDate: dateRange.startDate, endDate: dateRange.endDate }),
-    incomeRepo.list({ startDate: dateRange.startDate, endDate: dateRange.endDate }),
+    expenseRepo.list({ startDate: dateRange.startDate, endDate: dateRange.endDate, walletId }),
+    incomeRepo.list({ startDate: dateRange.startDate, endDate: dateRange.endDate, walletId }),
   ]);
 
   // Build a map of date -> { income, expense } in cents
@@ -125,26 +129,29 @@ export async function getBalanceTrendUseCase(
   return Array.from({ length: points }, (_, i) => dailyValues[Math.round(i * step)]);
 }
 
-export async function getDashboardSummaryUseCase(dateRange?: {
-  startDate?: string;
-  endDate?: string;
-}): Promise<DashboardSummary> {
+export async function getDashboardSummaryUseCase(
+  dateRange?: {
+    startDate?: string;
+    endDate?: string;
+  },
+  walletId?: string
+): Promise<DashboardSummary> {
   const expenseRepo = new SQLiteExpenseRepository();
   const incomeRepo = new SQLiteIncomeRepository();
   const outboxRepo = new SQLiteSyncOutboxRepository();
 
   const [totalExpensesCents, totalIncomeCents, recentExpenses, recentIncome, pendingSyncCount, allExpenses] =
     await Promise.all([
-      expenseRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
-      incomeRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate),
-      expenseRepo.list({ limit: 5 }),
-      incomeRepo.list({ limit: 5 }),
+      expenseRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate, walletId),
+      incomeRepo.getTotalCents(dateRange?.startDate, dateRange?.endDate, walletId),
+      expenseRepo.list({ limit: 5, walletId }),
+      incomeRepo.list({ limit: 5, walletId }),
       outboxRepo.countPending(),
-      expenseRepo.list(
-        dateRange?.startDate || dateRange?.endDate
-          ? { startDate: dateRange.startDate, endDate: dateRange.endDate }
-          : undefined
-      ),
+      expenseRepo.list({
+        startDate: dateRange?.startDate,
+        endDate: dateRange?.endDate,
+        walletId,
+      }),
     ]);
 
   // Exact Balance = Income - Expenses (integer arithmetic in cents)

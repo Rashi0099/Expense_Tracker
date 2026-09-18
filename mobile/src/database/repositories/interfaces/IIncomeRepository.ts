@@ -2,6 +2,7 @@ import { IncomeModel, PaymentMethod } from '../../../domain/models';
 
 export interface IncomeFilters {
   categoryId?: string;
+  walletId?: string;
   paymentMethod?: PaymentMethod;
   startDate?: string;
   endDate?: string;
@@ -13,6 +14,7 @@ export interface IncomeFilters {
 export interface CreateIncomeParams {
   id?: string;
   categoryId: string;
+  walletId?: string;
   amountCents: number;
   currency?: string;
   transactionDate: string;
@@ -23,6 +25,7 @@ export interface CreateIncomeParams {
 
 export interface UpdateIncomeParams {
   categoryId?: string;
+  walletId?: string;
   amountCents?: number;
   currency?: string;
   transactionDate?: string;
@@ -37,5 +40,5 @@ export interface IIncomeRepository {
   softDelete(id: string): Promise<void>;
   getById(id: string): Promise<IncomeModel | null>;
   list(filters?: IncomeFilters): Promise<IncomeModel[]>;
-  getTotalCents(startDate?: string, endDate?: string): Promise<number>;
+  getTotalCents(startDate?: string, endDate?: string, walletId?: string): Promise<number>;
 }

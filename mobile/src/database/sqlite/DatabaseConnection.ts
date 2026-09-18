@@ -124,6 +124,13 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
       const fromMatch = cleanQuery.match(/FROM\s+([a-zA-Z0-9_]+)/i);
       if (fromMatch && fromMatch[1]) {
         const tableName = fromMatch[1].toLowerCase();
+        if (tableName === 'sqlite_master') {
+          let tableRows = Array.from(this.tables.keys()).map((name) => ({ name, type: 'table' }));
+          if (cleanQuery.includes("name='wallets'") || cleanQuery.includes("name = 'wallets'")) {
+            tableRows = tableRows.filter((r) => r.name === 'wallets');
+          }
+          return { rows: tableRows as unknown as T[], rowsAffected: 0 };
+        }
         const table = this.tables.get(tableName) || [];
         let filtered = [...table];
 
@@ -241,6 +248,34 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
           if (whereClause.includes('is_active = 1')) {
             filtered = filtered.filter((r) => r.is_active === 1 || r.is_active === true);
           }
+
+          // Check is_default = 1
+          if (whereClause.includes('is_default = 1')) {
+            filtered = filtered.filter((r) => r.is_default === 1 || r.is_default === true);
+          }
+
+          // Check name = ?
+          if (whereClause.match(/(?:^|\s)name\s*=\s*\?/i)) {
+            const targetName = String(params[pIdx++]).toLowerCase();
+            filtered = filtered.filter((r) => String(r.name || '').toLowerCase() === targetName);
+          }
+
+          // Check id != ?
+          if (whereClause.match(/(?:^|\s)id\s*!=\s*\?/i)) {
+            const excludeId = params[pIdx++];
+            filtered = filtered.filter((r) => r.id !== excludeId);
+          }
+
+          // Check wallet_id = ?
+          if (whereClause.match(/(?:^|\s)(?:e\.|i\.)?wallet_id\s*=\s*\?/i)) {
+            const targetWallet = params[pIdx++];
+            filtered = filtered.filter((r) => r.wallet_id === targetWallet);
+          }
+
+          // Check wallet_id IS NULL
+          if (whereClause.includes('wallet_id IS NULL')) {
+            filtered = filtered.filter((r) => r.wallet_id === null || r.wallet_id === undefined);
+          }
         }
 
         // Category join
@@ -253,6 +288,18 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
               category_name: cat?.name || null,
               category_icon: cat?.icon || null,
               category_color: cat?.color || null,
+            };
+          });
+        }
+
+        // Wallet join
+        if (cleanQuery.includes('LEFT JOIN wallets')) {
+          const walletTable = this.tables.get('wallets') || [];
+          filtered = filtered.map((row) => {
+            const w = walletTable.find((wal) => wal.id === row.wallet_id);
+            return {
+              ...row,
+              wallet_name: w?.name || null,
             };
           });
         }
@@ -294,6 +341,13 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
         // Sorting
         if (cleanQuery.includes('ORDER BY frequency DESC')) {
           filtered.sort((a, b) => (Number(b.frequency) || 0) - (Number(a.frequency) || 0));
+        } else if (cleanQuery.includes('ORDER BY is_default DESC')) {
+          filtered.sort((a, b) => {
+            const defA = a.is_default ? 1 : 0;
+            const defB = b.is_default ? 1 : 0;
+            if (defA !== defB) return defB - defA;
+            return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+          });
         }
 
         // Pagination: LIMIT and OFFSET
@@ -325,6 +379,7 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
         // Parse WHERE target
         let targetId: unknown = null;
         let targetUser: unknown = null;
+        let excludeId: unknown = null;
 
         if (whereClause.includes('operation_id = ?')) {
           targetId = params[params.length - 2] || params[0];
@@ -332,7 +387,16 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
         } else if (whereClause.includes('id = ?')) {
           targetId = params[params.length - 2] || params[0];
           targetUser = params[params.length - 1];
+        } else if (whereClause.includes('user_id = ?')) {
+          targetUser = params[params.length - 1];
         }
+
+        if (whereClause.includes('id != ?')) {
+          excludeId = params[params.length - 2];
+        }
+
+        const checkDeletedNull = whereClause.includes('deleted_at IS NULL');
+        const checkWalletNull = whereClause.includes('wallet_id IS NULL');
 
         // Parse SET assignments
         const setAssignments = setClause.split(',').map((s) => s.trim());
@@ -340,9 +404,12 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
 
         for (const row of table) {
           const matchesId = targetId ? (row.id === targetId || row.operation_id === targetId) : true;
+          const matchesExcludeId = excludeId ? row.id !== excludeId : true;
           const matchesUser = targetUser ? row.user_id === targetUser : true;
+          const matchesDeleted = checkDeletedNull ? (row.deleted_at === null || row.deleted_at === undefined) : true;
+          const matchesWallet = checkWalletNull ? (row.wallet_id === null || row.wallet_id === undefined) : true;
 
-          if (matchesId && matchesUser) {
+          if (matchesId && matchesExcludeId && matchesUser && matchesDeleted && matchesWallet) {
             let setPIdx = 0;
             for (const assign of setAssignments) {
               const [colRaw, valRaw] = assign.split('=').map((s) => s.trim());
