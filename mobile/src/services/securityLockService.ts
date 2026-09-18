@@ -170,6 +170,21 @@ export class SecurityLockService {
   }
 
   /**
+   * Reset and disable PIN lock directly for recovery (e.g. user forgot PIN and resets via OTP auth).
+   */
+  public async disableLockDirectlyForRecovery(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(PIN_HASH_KEY);
+      await AsyncStorage.removeItem(PIN_LOCK_ENABLED_KEY);
+      await AsyncStorage.removeItem(PIN_TIMEOUT_KEY);
+      await AsyncStorage.removeItem(PIN_LOCKOUT_KEY);
+      this.isSessionUnlocked = true;
+      this.failedAttempts = 0;
+      this.lockoutUntil = 0;
+    } catch {}
+  }
+
+  /**
    * Change current PIN to a new 4-digit PIN.
    */
   public async changePin(oldPin: string, newPin: string): Promise<boolean> {

@@ -9,6 +9,7 @@ import {
   Image,
   Animated,
   Vibration,
+  Alert,
 } from 'react-native';
 import { securityLockService } from '../../services/securityLockService';
 import { APP_LOGO } from '../../assets/appLogo';
@@ -17,7 +18,7 @@ import { useAuth } from '../../app/providers/AuthProvider';
 
 export const SecurityLockOverlay: React.FC = () => {
   const { theme, isDark } = useTheme();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
   const [enteredPin, setEnteredPin] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -123,6 +124,25 @@ export const SecurityLockOverlay: React.FC = () => {
       setEnteredPin(enteredPin.slice(0, -1));
       setErrorMessage(null);
     }
+  };
+
+  const handleForgotPin = () => {
+    Alert.alert(
+      'Forgot PIN?',
+      'To reset your security PIN, sign out and sign in again with your mobile number.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out & Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await securityLockService.disableLockDirectlyForRecovery();
+            setIsLocked(false);
+            await logout();
+          },
+        },
+      ]
+    );
   };
 
   if (!isLocked || isLoading || !isAuthenticated) {
@@ -242,6 +262,17 @@ export const SecurityLockOverlay: React.FC = () => {
             <Text style={[styles.backspaceText, { color: textColor }]}>⌫</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Forgot PIN / Reset option */}
+        <TouchableOpacity
+          style={styles.forgotButton}
+          onPress={handleForgotPin}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.forgotButtonText, { color: subtitleColor }]}>
+            Forgot PIN? Reset & Sign Out
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -334,5 +365,16 @@ const styles = StyleSheet.create({
   keyPlaceholder: {
     width: 72,
     height: 72,
+  },
+  forgotButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  forgotButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

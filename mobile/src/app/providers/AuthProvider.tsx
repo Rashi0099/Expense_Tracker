@@ -9,6 +9,7 @@ import { SyncEngine } from '../../sync/engine/SyncEngine';
 import { FCMPushService } from '../../services/fcmPushService';
 import { generateUUID } from '../../utils/uuid';
 import { DataEvents } from '../../database/sqlite/DataEvents';
+import { securityLockService } from '../../services/securityLockService';
 
 const ONBOARDING_KEY_PREFIX = '@onboarding/completed_';
 
@@ -121,6 +122,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsOnboardingCompleted(onboardingDone);
           setUser(cachedUser);
           DatabaseManager.getInstance().setCurrentUser(cachedUser.id);
+          // Unlock the PIN session — user was already authenticated before this cold start
+          securityLockService.unlockSession();
           SyncEngine.getInstance().init();
           SyncEngine.getInstance().sync().catch(() => {});
           FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
@@ -159,6 +162,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsOnboardingCompleted(!!flag);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
+    securityLockService.unlockSession();
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
@@ -180,6 +184,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsOnboardingCompleted(!!flag);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
+    securityLockService.unlockSession();
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
@@ -208,6 +213,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsOnboardingCompleted(onboardingDone);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
+    securityLockService.unlockSession();
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
@@ -236,6 +242,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsOnboardingCompleted(onboardingDone);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
+    securityLockService.unlockSession();
     SyncEngine.getInstance().init();
     SyncEngine.getInstance().sync().catch(() => {});
     FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
@@ -257,6 +264,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setIsOnboardingCompleted(false);
       DatabaseManager.getInstance().setCurrentUser(null);
+      securityLockService.lockSession();
       SyncEngine.getInstance().reset();
       FCMPushService.getInstance().unregisterDevicePushToken().catch(() => {});
     }
