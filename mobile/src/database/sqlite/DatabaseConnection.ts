@@ -169,6 +169,12 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
             filtered = filtered.filter((r) => r.category_id === targetCat);
           }
 
+          // Check wallet_id = ?
+          if (whereClause.match(/(?:^|\s)(?:e\.|i\.)?wallet_id\s*=\s*\?/i)) {
+            const targetWallet = params[pIdx++];
+            filtered = filtered.filter((r) => r.wallet_id === targetWallet);
+          }
+
           // Check period_start
           if (whereClause.match(/(?:^|\s)(?:b\.)?period_start\s*=\s*\?/i)) {
             const targetPeriod = params[pIdx++];
@@ -264,12 +270,6 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
           if (whereClause.match(/(?:^|\s)id\s*!=\s*\?/i)) {
             const excludeId = params[pIdx++];
             filtered = filtered.filter((r) => r.id !== excludeId);
-          }
-
-          // Check wallet_id = ?
-          if (whereClause.match(/(?:^|\s)(?:e\.|i\.)?wallet_id\s*=\s*\?/i)) {
-            const targetWallet = params[pIdx++];
-            filtered = filtered.filter((r) => r.wallet_id === targetWallet);
           }
 
           // Check wallet_id IS NULL

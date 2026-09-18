@@ -32,6 +32,7 @@ import { formatDisplayDate, getCurrentMonthString } from '../../utils/date';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 import { APP_LOGO } from '../../assets/appLogo';
 import { CashflowOverviewCard } from './components/CashflowOverviewCard';
+import { IncomeExpenseTrendCard } from './components/IncomeExpenseTrendCard';
 import { useWallet } from '../../app/providers/WalletProvider';
 import { useBalanceVisibility } from '../../app/providers/BalanceVisibilityProvider';
 import { IconWallet } from '../../components/common/NavIcons';
@@ -251,6 +252,13 @@ export const DashboardScreen: React.FC = () => {
           </View>
         </Card>
       </View>
+
+      {/* 6-Month Income vs Expenses Trend Card matching user design */}
+      <IncomeExpenseTrendCard
+        walletId={activeWalletId || undefined}
+        refreshTrigger={refreshTrigger}
+        currency={currency}
+      />
 
       {/* Category Overview Horizontal Scroll Cards matching uiii.png */}
       <View style={styles.section}>

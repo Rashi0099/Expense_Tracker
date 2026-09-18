@@ -217,3 +217,81 @@ export async function getDashboardSummaryUseCase(
     pendingSyncCount,
   };
 }
+
+export interface MonthTrendData {
+  monthKey: string;
+  monthLabel: string;
+  incomeCents: number;
+  expenseCents: number;
+}
+
+/**
+ * Returns historical income vs expenses trend for the last N months (default 6).
+ * Computes monthly totals in minor units (cents) filtered by wallet if provided.
+ */
+export async function getSixMonthTrendUseCase(
+  monthsCount: number = 6,
+  walletId?: string
+): Promise<MonthTrendData[]> {
+  const expenseRepo = new SQLiteExpenseRepository();
+  const incomeRepo = new SQLiteIncomeRepository();
+
+  const now = new Date();
+  const months: MonthTrendData[] = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  for (let i = monthsCount - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const monthKey = `${year}-${m}`;
+    const monthLabel = monthNames[d.getMonth()];
+    months.push({
+      monthKey,
+      monthLabel,
+      incomeCents: 0,
+      expenseCents: 0,
+    });
+  }
+
+  const startDate = `${months[0].monthKey}-01`;
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const endDay = String(lastMonthDate.getDate()).padStart(2, '0');
+  const endDate = `${months[months.length - 1].monthKey}-${endDay}`;
+
+  const [expenses, incomes] = await Promise.all([
+    expenseRepo.list({ startDate, endDate, walletId }),
+    incomeRepo.list({ startDate, endDate, walletId }),
+  ]);
+
+  const map = new Map<string, { incomeCents: number; expenseCents: number }>();
+  for (const m of months) {
+    map.set(m.monthKey, { incomeCents: 0, expenseCents: 0 });
+  }
+
+  for (const exp of expenses) {
+    const key = exp.transactionDate.substring(0, 7);
+    const entry = map.get(key);
+    if (entry) {
+      entry.expenseCents += exp.amountCents;
+    }
+  }
+
+  for (const inc of incomes) {
+    const key = inc.transactionDate.substring(0, 7);
+    const entry = map.get(key);
+    if (entry) {
+      entry.incomeCents += inc.amountCents;
+    }
+  }
+
+  return months.map((m) => {
+    const entry = map.get(m.monthKey);
+    return {
+      ...m,
+      incomeCents: entry ? entry.incomeCents : 0,
+      expenseCents: entry ? entry.expenseCents : 0,
+    };
+  });
+}
+

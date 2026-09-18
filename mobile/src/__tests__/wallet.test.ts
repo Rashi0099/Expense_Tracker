@@ -13,6 +13,7 @@ import {
   getWalletBalanceUseCase,
   canDeleteWalletUseCase,
 } from '../domain/usecases/walletUseCases';
+import { getSixMonthTrendUseCase } from '../domain/usecases/dashboardUseCases';
 import { DataEvents } from '../database/sqlite/DataEvents';
 
 describe('Wallet 1 & Multi-Wallet Isolation Feature', () => {
@@ -236,5 +237,62 @@ describe('Wallet 1 & Multi-Wallet Isolation Feature', () => {
     expect(eventFired).toBe(true);
 
     unsub();
+  });
+
+  it('calculates 6-month historical income vs expenses trend with wallet isolation', async () => {
+    const defaultWallet = await ensureDefaultWalletUseCase(TEST_USER);
+    const wallet2 = await createWalletUseCase('Second Wallet');
+
+    const expRepo = new SQLiteExpenseRepository();
+    const incRepo = new SQLiteIncomeRepository();
+
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const curDate = `${curYear}-${curMonth}-10`;
+
+    // Add income and expense to defaultWallet in current month
+    await incRepo.create({
+      userId: TEST_USER,
+      amountCents: 50000,
+      transactionDate: curDate,
+      source: 'Salary',
+      walletId: defaultWallet.id,
+    });
+    await expRepo.create({
+      userId: TEST_USER,
+      amountCents: 15000,
+      transactionDate: curDate,
+      categoryId: 'cat_food',
+      walletId: defaultWallet.id,
+    });
+
+    // Add income to wallet2
+    await incRepo.create({
+      userId: TEST_USER,
+      amountCents: 80000,
+      transactionDate: curDate,
+      source: 'Freelance',
+      walletId: wallet2.id,
+    });
+
+    // Overall 6-month trend (all wallets)
+    const overallTrends = await getSixMonthTrendUseCase(6);
+    expect(overallTrends.length).toBe(6);
+    const currentMonthData = overallTrends[overallTrends.length - 1];
+    expect(currentMonthData.incomeCents).toBe(130000); // 50000 + 80000
+    expect(currentMonthData.expenseCents).toBe(15000);
+
+    // Default wallet isolation
+    const wallet1Trends = await getSixMonthTrendUseCase(6, defaultWallet.id);
+    const w1CurMonth = wallet1Trends[wallet1Trends.length - 1];
+    expect(w1CurMonth.incomeCents).toBe(50000);
+    expect(w1CurMonth.expenseCents).toBe(15000);
+
+    // Wallet 2 isolation
+    const wallet2Trends = await getSixMonthTrendUseCase(6, wallet2.id);
+    const w2CurMonth = wallet2Trends[wallet2Trends.length - 1];
+    expect(w2CurMonth.incomeCents).toBe(80000);
+    expect(w2CurMonth.expenseCents).toBe(0);
   });
 });
