@@ -400,11 +400,48 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
     setSearch('');
   };
 
+  // Fetch all filtered items for complete export (no pagination cutoff)
+  const fetchExportItems = async () => {
+    const dateRange = getDateRangeFromPreset(datePreset);
+    const minCents = minAmount.trim() ? Math.round(parseFloat(minAmount) * 100) : undefined;
+    const maxCents = maxAmount.trim() ? Math.round(parseFloat(maxAmount) * 100) : undefined;
+
+    const [allExp, allInc] = await Promise.all([
+      selectedTab === 'EXPENSE'
+        ? listExpensesUseCase({
+            search: debouncedSearch.trim() || undefined,
+            categoryId: selectedCategory || undefined,
+            walletId: selectedWalletId || undefined,
+            paymentMethod: selectedPaymentMethod || undefined,
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+            minAmountCents: minCents,
+            maxAmountCents: maxCents,
+            limit: 10000,
+          })
+        : Promise.resolve([]),
+      selectedTab === 'INCOME'
+        ? listIncomeUseCase({
+            search: debouncedSearch.trim() || undefined,
+            categoryId: selectedCategory || undefined,
+            walletId: selectedWalletId || undefined,
+            paymentMethod: selectedPaymentMethod || undefined,
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+            minAmountCents: minCents,
+            maxAmountCents: maxCents,
+          })
+        : Promise.resolve([]),
+    ]);
+
+    return normalizeTransactionsForExport(allExp, allInc);
+  };
+
   // Export handlers
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
-      const items = normalizeTransactionsForExport(expenses, incomes);
+      const items = await fetchExportItems();
       if (items.length === 0) {
         Alert.alert('No Records', 'There are no transactions to export with the current filters.');
         return;
@@ -422,7 +459,7 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
   const handleExportStatement = async () => {
     setIsExporting(true);
     try {
-      const items = normalizeTransactionsForExport(expenses, incomes);
+      const items = await fetchExportItems();
       if (items.length === 0) {
         Alert.alert('No Records', 'There are no transactions to export with the current filters.');
         return;
