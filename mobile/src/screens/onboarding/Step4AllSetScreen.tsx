@@ -17,17 +17,7 @@ export const Step4AllSetScreen: React.FC = () => {
   const { markOnboardingComplete } = useAuth();
   const [isNavigating, setIsNavigating] = useState(false);
 
-  // ─── Hero Celebration Badge Animations (Fast, Snappy & Aesthetic) ────────
-  const heroScale = useRef(new Animated.Value(0.2)).current;
-  const heroRotate = useRef(new Animated.Value(0)).current;
-  const heroGlowScale = useRef(new Animated.Value(0.9)).current;
-  const heroGlowOpacity = useRef(new Animated.Value(0)).current;
-
-  // ─── Title & Subtitle Fade ───────────────────────────────────────────────
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslateY = useRef(new Animated.Value(14)).current;
-
-  // ─── Fast Sequential Checklist Ticks ─────────────────────────────────────
+  // ─── 1. Checklist Ticks Animations (Tick 1 -> Tick 2 -> Tick 3) ─────────
   const row1Scale = useRef(new Animated.Value(0)).current;
   const row1Rotate = useRef(new Animated.Value(-35)).current;
   const row1RingScale = useRef(new Animated.Value(0.8)).current;
@@ -46,50 +36,27 @@ export const Step4AllSetScreen: React.FC = () => {
   const row3RingOpacity = useRef(new Animated.Value(0)).current;
   const row3BgHighlight = useRef(new Animated.Value(0)).current;
 
-  // ─── Bottom Button & Pulse ──────────────────────────────────────────────
+  // ─── 2. Hero Celebration Animations (Appears AFTER 3 ticks complete!) ────
+  const heroOpacity = useRef(new Animated.Value(0)).current;
+  const heroScale = useRef(new Animated.Value(0.2)).current;
+  const heroRotate = useRef(new Animated.Value(0)).current;
+  const heroGlowScale = useRef(new Animated.Value(0.8)).current;
+  const heroGlowOpacity = useRef(new Animated.Value(0)).current;
+
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textTranslateY = useRef(new Animated.Value(-16)).current;
+
+  // ─── 3. Bottom Button & Alive Pulse ─────────────────────────────────────
   const buttonOpacity = useRef(new Animated.Value(0)).current;
   const buttonTranslateY = useRef(new Animated.Value(18)).current;
   const buttonPulse = useRef(new Animated.Value(1)).current;
 
-  // ─── Screen Exit Transition ─────────────────────────────────────────────
+  // ─── 4. Screen Exit Transition ──────────────────────────────────────────
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // 1. Hero Badge fast spin & pop in
-    const heroAnimation = Animated.parallel([
-      Animated.spring(heroScale, {
-        toValue: 1,
-        friction: 5,
-        tension: 130,
-        useNativeDriver: true,
-      }),
-      Animated.timing(heroRotate, {
-        toValue: 1,
-        duration: 380,
-        easing: Easing.out(Easing.back(1.4)),
-        useNativeDriver: true,
-      }),
-      Animated.timing(heroGlowOpacity, {
-        toValue: 0.28,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.spring(heroGlowScale, {
-        toValue: 1.2,
-        friction: 6,
-        tension: 90,
-        useNativeDriver: true,
-      }),
-    ]);
-
-    // 2. Title & Subtitle fast entry
-    const titleAnim = Animated.parallel([
-      Animated.timing(textOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-      Animated.spring(textTranslateY, { toValue: 0, friction: 6, tension: 120, useNativeDriver: true }),
-    ]);
-
-    // 3. Fast Snappy Tick Helper (~110ms per row)
+    // Fast Snappy Tick Animation Helper (~110ms per row)
     const makeFastTickAnim = (
       scale: Animated.Value,
       rotate: Animated.Value,
@@ -101,59 +68,107 @@ export const Step4AllSetScreen: React.FC = () => {
         Animated.spring(scale, {
           toValue: 1,
           friction: 4,
-          tension: 180,
+          tension: 190,
           useNativeDriver: true,
         }),
         Animated.timing(rotate, {
           toValue: 0,
-          duration: 120,
+          duration: 110,
           useNativeDriver: true,
         }),
         Animated.sequence([
-          Animated.timing(ringOpacity, { toValue: 0.7, duration: 60, useNativeDriver: true }),
+          Animated.timing(ringOpacity, { toValue: 0.75, duration: 50, useNativeDriver: true }),
           Animated.parallel([
-            Animated.timing(ringScale, { toValue: 1.6, duration: 160, useNativeDriver: true }),
-            Animated.timing(ringOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+            Animated.timing(ringScale, { toValue: 1.7, duration: 150, useNativeDriver: true }),
+            Animated.timing(ringOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
           ]),
         ]),
         Animated.timing(bg, {
           toValue: 1,
-          duration: 150,
+          duration: 140,
           useNativeDriver: false,
         }),
       ]);
 
-    // 4. CTA Button Entry
+    // Hero Celebration entrance (after the 3 ticks finish!)
+    const heroCelebrationAnim = Animated.parallel([
+      Animated.timing(heroOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(heroScale, {
+        toValue: 1,
+        friction: 5,
+        tension: 140,
+        useNativeDriver: true,
+      }),
+      Animated.timing(heroRotate, {
+        toValue: 1,
+        duration: 380,
+        easing: Easing.out(Easing.back(1.5)),
+        useNativeDriver: true,
+      }),
+      Animated.timing(heroGlowOpacity, {
+        toValue: 0.28,
+        duration: 240,
+        useNativeDriver: true,
+      }),
+      Animated.spring(heroGlowScale, {
+        toValue: 1.25,
+        friction: 6,
+        tension: 90,
+        useNativeDriver: true,
+      }),
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+      Animated.spring(textTranslateY, {
+        toValue: 0,
+        friction: 6,
+        tension: 120,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    // Button Entry
     const buttonEntry = Animated.parallel([
-      Animated.timing(buttonOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.timing(buttonOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
       Animated.spring(buttonTranslateY, { toValue: 0, friction: 5, tension: 120, useNativeDriver: true }),
     ]);
 
-    // Master Fast Sequence: Crisp, snappy, finished in ~650ms total!
+    // ─── MASTER SEQUENCE: 3 Ticks First -> Then "You're All Set!" -> Then Button ───
     Animated.sequence([
-      Animated.delay(50),
-      Animated.parallel([heroAnimation, titleAnim]),
-      Animated.delay(90),
+      Animated.delay(120),
+      // 1. Tick 1: Profile saved
       makeFastTickAnim(row1Scale, row1Rotate, row1RingScale, row1RingOpacity, row1BgHighlight),
-      Animated.delay(110),
+      Animated.delay(120),
+      // 2. Tick 2: Expense categories set
       makeFastTickAnim(row2Scale, row2Rotate, row2RingScale, row2RingOpacity, row2BgHighlight),
-      Animated.delay(110),
+      Animated.delay(120),
+      // 3. Tick 3: Income sources set
       makeFastTickAnim(row3Scale, row3Rotate, row3RingScale, row3RingOpacity, row3BgHighlight),
-      Animated.delay(90),
+      Animated.delay(140),
+      // 4. NOW: Hero "You're all set!" Badge & Title Celebration spins in!
+      heroCelebrationAnim,
+      Animated.delay(100),
+      // 5. Button unlocks
       buttonEntry,
     ]).start(() => {
-      // Gentle alive pulse on button
+      // Button alive pulse
       Animated.loop(
         Animated.sequence([
           Animated.timing(buttonPulse, {
             toValue: 1.025,
-            duration: 800,
+            duration: 850,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
           Animated.timing(buttonPulse, {
             toValue: 1.0,
-            duration: 800,
+            duration: 850,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
@@ -167,7 +182,6 @@ export const Step4AllSetScreen: React.FC = () => {
     if (isNavigating) return;
     setIsNavigating(true);
 
-    // Smooth elegant fade-out into dashboard
     Animated.parallel([
       Animated.timing(screenOpacity, {
         toValue: 0,
@@ -217,8 +231,16 @@ export const Step4AllSetScreen: React.FC = () => {
           },
         ]}
       >
-        {/* ─── Hero Rotating Badge (Clean, Aesthetic, No floating emoji sparkles) ─── */}
-        <View style={styles.heroSection}>
+        {/* ─── Top Celebration Badge (Spins in after 3 ticks finish!) ────────── */}
+        <Animated.View
+          style={[
+            styles.heroSection,
+            {
+              opacity: heroOpacity,
+              transform: [{ scale: heroScale }, { rotate: heroSpinDeg }],
+            },
+          ]}
+        >
           <Animated.View
             style={[
               styles.glowRing,
@@ -229,24 +251,17 @@ export const Step4AllSetScreen: React.FC = () => {
             ]}
           />
 
-          <Animated.View
-            style={[
-              styles.heroBadge,
-              {
-                transform: [{ scale: heroScale }, { rotate: heroSpinDeg }],
-              },
-            ]}
-          >
+          <View style={styles.heroBadge}>
             <View style={styles.innerBadgeRing}>
               <Image source={APP_LOGO} style={styles.heroLogo} resizeMode="contain" />
               <View style={styles.badgeCheckOverlay}>
                 <Text style={styles.badgeCheckIcon}>✓</Text>
               </View>
             </View>
-          </Animated.View>
-        </View>
+          </View>
+        </Animated.View>
 
-        {/* ─── Title & Subtitle ────────────────────────────────────────────── */}
+        {/* ─── "You're all set!" Title & Subtitle (Appears with top badge) ──── */}
         <Animated.View
           style={[
             styles.titleSection,
@@ -262,7 +277,7 @@ export const Step4AllSetScreen: React.FC = () => {
           </Text>
         </Animated.View>
 
-        {/* ─── Premium Checklist Card ──────────────────────────────────────── */}
+        {/* ─── Checklist Card (Ticks 1, 2, 3 first) ────────────────────────── */}
         <View style={styles.card}>
           {/* Row 1: Profile saved */}
           <Animated.View
@@ -425,16 +440,16 @@ const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 22,
+    marginBottom: 6,
     position: 'relative',
-    height: 110,
+    height: 104,
   },
   glowRing: {
     position: 'absolute',
-    width: 116,
-    height: 116,
-    borderRadius: 58,
+    width: 114,
+    height: 114,
+    borderRadius: 57,
     backgroundColor: '#1D5842',
   },
   heroBadge: {
@@ -486,7 +501,8 @@ const styles = StyleSheet.create({
   },
   titleSection: {
     alignItems: 'center',
-    marginBottom: 26,
+    marginBottom: 24,
+    minHeight: 64,
   },
   title: {
     fontSize: 27,
