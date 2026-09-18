@@ -273,7 +273,7 @@ export const Step4AllSetScreen: React.FC = () => {
         >
           <Text style={styles.title}>You’re all set!</Text>
           <Text style={styles.subtitle}>
-            Your categories are ready and{'\n'}CashFlow is set up for you.
+            Your categories are ready and{'\n'}Spending Book is set up for you.
           </Text>
         </Animated.View>
 

@@ -38,21 +38,8 @@ export const IconOverview: React.FC<IconProps> = ({
           backgroundColor: color,
           borderBottomLeftRadius: 3,
           borderBottomRightRadius: 3,
-          alignItems: 'center',
-          justifyContent: 'flex-end',
         }}
-      >
-        {/* Door Cutout */}
-        <View
-          style={{
-            width: Math.round(size * 0.22),
-            height: Math.round(size * 0.24),
-            borderTopLeftRadius: 3,
-            borderTopRightRadius: 3,
-            backgroundColor: '#0F1322',
-          }}
-        />
-      </View>
+      />
     </View>
   );
 };

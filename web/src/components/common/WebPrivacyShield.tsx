@@ -99,7 +99,7 @@ export const WebPrivacyShield: React.FC<WebPrivacyShieldProps> = ({ children }) 
               <Shield className="w-8 h-8" />
             </div>
             <h2 className="text-xl font-bold text-white mb-2 tracking-tight">
-              ExpenseFlow — Protected View
+              Spending Book — Protected View
             </h2>
             <p className="text-sm text-slate-300 max-w-sm mb-6 leading-relaxed">
               Financial figures and transaction details are shielded while the tab is inactive or during screen-sharing presentations.

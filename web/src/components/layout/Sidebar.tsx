@@ -41,7 +41,7 @@ export const Sidebar: React.FC = () => {
         </div>
         <div>
           <span className="text-base font-bold text-slate-900 tracking-tight block">
-            ExpenseFlow
+            Spending Book
           </span>
           <span className="text-[11px] font-medium text-slate-400 block -mt-0.5">
             Financial Tracking

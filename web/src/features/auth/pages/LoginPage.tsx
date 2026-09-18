@@ -110,7 +110,7 @@ export const LoginPage: React.FC = () => {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-primary-600 text-white flex items-center justify-center mx-auto mb-3 shadow-card">
             <Wallet className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">ExpenseFlow</h2>
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Spending Book</h2>
           <p className="text-xs text-slate-500 mt-1">
             {otpStep === 'PHONE_INPUT'
               ? 'Sign in or register instantly with your mobile number'

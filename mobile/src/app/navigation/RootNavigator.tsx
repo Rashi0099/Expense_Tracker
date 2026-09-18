@@ -123,7 +123,7 @@ export const RootNavigator: React.FC = () => {
           resizeMode="contain"
         />
         <Text style={[styles.splashTitle, { color: theme.colors.textPrimary }]}>
-          CashFlow
+          Spending Book
         </Text>
         <LoadingState message="Initializing your financial space..." />
       </View>

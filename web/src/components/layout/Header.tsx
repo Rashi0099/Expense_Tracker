@@ -24,7 +24,7 @@ const titleMap: Record<string, string> = {
 export const Header: React.FC<HeaderProps> = ({ onAddExpense }) => {
   const location = useLocation();
   const { user } = useAuth();
-  const currentTitle = titleMap[location.pathname] || 'ExpenseFlow';
+  const currentTitle = titleMap[location.pathname] || 'Spending Book';
 
   return (
     <header className="h-16 border-b border-slate-100 bg-white/60 backdrop-blur-md sticky top-0 z-10 px-4 sm:px-8 flex items-center justify-between">

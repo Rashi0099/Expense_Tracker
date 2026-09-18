@@ -166,7 +166,7 @@ export const DashboardScreen: React.FC = () => {
             style={styles.headerLogo}
             resizeMode="contain"
           />
-          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>CashFlow</Text>
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Spending Book</Text>
         </View>
 
         {/* Top-Right Wallet Switcher Button */}
@@ -522,6 +522,8 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     marginRight: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 22,

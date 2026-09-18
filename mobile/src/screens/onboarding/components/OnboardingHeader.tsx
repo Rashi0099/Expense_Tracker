@@ -27,7 +27,7 @@ export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({
           )}
           <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
           <View style={styles.logoTextCol}>
-            <Text style={styles.logoName}>CashFlow</Text>
+            <Text style={styles.logoName}>Spending Book</Text>
             <Text style={styles.logoTagline}>A smarter you, financially.</Text>
           </View>
         </View>

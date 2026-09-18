@@ -78,7 +78,7 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
               resizeMode="contain"
             />
             <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-              Expense Tracker
+              Spending Book
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
               🔒 Financial details protected
@@ -105,6 +105,8 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     marginBottom: 16,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   title: {
     fontSize: 22,
