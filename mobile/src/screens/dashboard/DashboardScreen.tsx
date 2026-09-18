@@ -184,14 +184,7 @@ export const DashboardScreen: React.FC = () => {
           accessibilityRole="button"
           accessibilityLabel={`Active wallet: ${activeWallet?.name || 'Wallet 1'}. Tap to switch.`}
         >
-          <IconWallet color={theme.colors.primary} size={15} />
-          <Text
-            style={[styles.walletSwitchBtnText, { color: theme.colors.textPrimary }]}
-            numberOfLines={1}
-          >
-            {activeWallet?.name || 'Wallet 1'}
-          </Text>
-          <Text style={[styles.walletSwitchChevron, { color: theme.colors.textMuted }]}>▾</Text>
+          <IconWallet color={theme.colors.primary} size={18} />
         </TouchableOpacity>
       </View>
 
@@ -416,7 +409,7 @@ export const DashboardScreen: React.FC = () => {
         title="Select Wallet"
       >
         <View style={styles.walletModalContent}>
-          <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+          <View style={styles.walletList}>
             {wallets.map((wallet) => {
               const isSelected = wallet.id === activeWalletId;
               return (
@@ -426,7 +419,7 @@ export const DashboardScreen: React.FC = () => {
                     styles.walletItemRow,
                     isSelected && {
                       backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
-                      borderColor: isDark ? '#1D4ED8' : '#BFDBFE',
+                      borderColor: isDark ? '#3B82F6' : '#93C5FD',
                     },
                   ]}
                   onPress={async () => {
@@ -436,21 +429,13 @@ export const DashboardScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.walletItemLeft}>
-                    <Text
-                      style={[
-                        styles.walletItemCheck,
-                        { color: isSelected ? theme.colors.primary : 'transparent' },
-                      ]}
-                    >
-                      ✓
-                    </Text>
                     <View>
                       <Text
                         style={[
                           styles.walletItemName,
                           {
-                            color: theme.colors.textPrimary,
-                            fontWeight: isSelected ? '700' : '500',
+                            color: isSelected ? theme.colors.primary : theme.colors.textPrimary,
+                            fontWeight: isSelected ? '700' : '600',
                           },
                         ]}
                       >
@@ -484,51 +469,29 @@ export const DashboardScreen: React.FC = () => {
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
 
-          {/* Transfer Funds & Manage Wallet Buttons */}
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-            {wallets.length >= 2 && (
-              <TouchableOpacity
-                style={[
-                  styles.manageWalletsBtn,
-                  {
-                    flex: 1,
-                    backgroundColor: theme.colors.surfaceSubtle,
-                    borderColor: theme.colors.surfaceBorder,
-                  },
-                ]}
-                onPress={() => {
-                  setShowWalletModal(false);
-                  navigation.navigate('QuickExpense', { tab: 'TRANSFER' });
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.manageWalletsBtnText, { color: '#6366F1' }]}>
-                  🔄 Transfer
-                </Text>
-              </TouchableOpacity>
-            )}
+          {wallets.length >= 2 && (
             <TouchableOpacity
               style={[
                 styles.manageWalletsBtn,
                 {
-                  flex: 1,
+                  marginTop: 8,
                   backgroundColor: theme.colors.surfaceSubtle,
                   borderColor: theme.colors.surfaceBorder,
                 },
               ]}
               onPress={() => {
                 setShowWalletModal(false);
-                navigation.navigate('Wallets');
+                navigation.navigate('QuickExpense', { tab: 'TRANSFER' });
               }}
               activeOpacity={0.7}
             >
-              <Text style={[styles.manageWalletsBtnText, { color: theme.colors.primary }]}>
-                ⚙️ Manage
+              <Text style={[styles.manageWalletsBtnText, { color: '#6366F1' }]}>
+                🔄 Transfer Funds Between Wallets
               </Text>
             </TouchableOpacity>
-          </View>
+          )}
         </View>
       </BottomSheet>
     </Screen>
@@ -563,48 +526,34 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   walletSwitchBtn: {
-    flexDirection: 'row',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
+    justifyContent: 'center',
     borderWidth: 1,
   },
-  walletSwitchBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    maxWidth: 90,
-  },
-  walletSwitchChevron: {
-    fontSize: 11,
-    marginTop: 1,
-  },
   walletModalContent: {
-    paddingTop: 8,
-    paddingBottom: 24,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  walletList: {
+    width: '100%',
   },
   walletItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: 'transparent',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   walletItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  walletItemCheck: {
-    fontSize: 16,
-    fontWeight: '800',
-    width: 20,
-    textAlign: 'center',
   },
   walletItemName: {
     fontSize: 15,
