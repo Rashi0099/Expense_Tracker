@@ -1,4 +1,4 @@
-import { Share, Alert, NativeModules, Platform } from 'react-native';
+import { Share, Alert, NativeModules, Platform, Linking } from 'react-native';
 import { ExpenseModel, IncomeModel } from '../domain/models';
 import { formatDisplayDate } from './date';
 
@@ -167,6 +167,23 @@ export async function shareExportContent(
       return true;
     }
 
+    if (Platform.OS === 'android' && !NativeModules.FileShareModule?.shareFile) {
+      Alert.alert(
+        'App Update Required for Excel Export',
+        'Sharing authentic .csv / Excel spreadsheet files requires installing the latest app build (v1.0.16). Would you like to download it now?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Download Update',
+            onPress: () => {
+              Linking.openURL('http://51.21.200.201/ota/app-release.apk');
+            },
+          },
+        ]
+      );
+      return false;
+    }
+
     const result = await Share.share({
       title: fileName,
       message: content,
@@ -216,7 +233,24 @@ export async function shareExportPdf(
       return true;
     }
 
-    // Fallback if native PDF generator is unavailable
+    if (Platform.OS === 'android' && !NativeModules.FileShareModule?.sharePdf) {
+      Alert.alert(
+        'App Update Required for PDF Export',
+        'Generating authentic .pdf documents requires installing the latest app build (v1.0.16). Would you like to download it now?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Download Update',
+            onPress: () => {
+              Linking.openURL('http://51.21.200.201/ota/app-release.apk');
+            },
+          },
+        ]
+      );
+      return false;
+    }
+
+    // Fallback on other platforms
     const statement = generateFinancialStatement(items, currency, title);
     const result = await Share.share({
       title: fileName,
