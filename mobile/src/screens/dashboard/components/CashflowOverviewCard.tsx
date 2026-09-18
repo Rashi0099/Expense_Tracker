@@ -15,6 +15,7 @@ import {
 import { formatCurrencyFromCents } from '../../../utils/money';
 import { DataEvents } from '../../../database/sqlite/DataEvents';
 import { useTheme } from '../../../theme/useTheme';
+import { useBalanceVisibility } from '../../../app/providers/BalanceVisibilityProvider';
 import { SparklineChart } from '../../../components/common/SparklineChart';
 
 export type DashboardFilter = 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_3_MONTHS' | 'THIS_YEAR' | 'ALL_TIME';
@@ -163,7 +164,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
     }
   };
 
-  const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const { isBalanceHidden, toggleBalanceHidden } = useBalanceVisibility();
 
   return (
     <View style={styles.outerContainer}>
@@ -182,7 +183,7 @@ export const CashflowOverviewCard: React.FC<CashflowOverviewCardProps> = memo(({
         <View style={styles.cardHeaderRow}>
           {/* Left: Total Balance label + Eye Icon */}
           <TouchableOpacity
-            onPress={() => setIsBalanceHidden((prev) => !prev)}
+            onPress={toggleBalanceHidden}
             activeOpacity={0.7}
             style={styles.balanceLabelRow}
             accessibilityRole="button"

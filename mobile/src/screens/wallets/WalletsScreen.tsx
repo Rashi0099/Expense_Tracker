@@ -17,6 +17,7 @@ import { CurrencyText } from '../../components/common/CurrencyText';
 import { useWallet } from '../../app/providers/WalletProvider';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
+import { useBalanceVisibility } from '../../app/providers/BalanceVisibilityProvider';
 import { IconWallet } from '../../components/common/NavIcons';
 import { WalletModel } from '../../domain/models';
 import { canDeleteWalletUseCase } from '../../domain/usecases/walletUseCases';
@@ -25,6 +26,7 @@ export const WalletsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
+  const { isBalanceHidden, toggleBalanceHidden } = useBalanceVisibility();
   const {
     wallets,
     activeWallet,
@@ -169,7 +171,16 @@ export const WalletsScreen: React.FC = () => {
             {activeWallet.name}
           </Text>
           <View style={styles.heroBalanceRow}>
-            <Text style={[styles.heroBalanceLabel, { color: theme.colors.textSecondary }]}>Balance</Text>
+            <TouchableOpacity
+              onPress={toggleBalanceHidden}
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.heroBalanceLabel, { color: theme.colors.textSecondary, marginRight: 6 }]}>
+                Balance
+              </Text>
+              <Text style={{ fontSize: 13 }}>{isBalanceHidden ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
             <Text
               style={[
                 styles.heroBalanceValue,
@@ -181,7 +192,11 @@ export const WalletsScreen: React.FC = () => {
                 },
               ]}
             >
-              <CurrencyText amountCents={activeWallet.balanceCents || 0} currency={currency} />
+              {isBalanceHidden ? (
+                '••••••••'
+              ) : (
+                <CurrencyText amountCents={activeWallet.balanceCents || 0} currency={currency} />
+              )}
             </Text>
           </View>
         </Card>
@@ -233,7 +248,12 @@ export const WalletsScreen: React.FC = () => {
                     )}
                   </View>
                   <Text style={[styles.walletCardBalance, { color: theme.colors.textSecondary }]}>
-                    Balance: <CurrencyText amountCents={balance} currency={currency} />
+                    Balance:{' '}
+                    {isBalanceHidden ? (
+                      '••••'
+                    ) : (
+                      <CurrencyText amountCents={balance} currency={currency} />
+                    )}
                   </Text>
                 </View>
               </View>

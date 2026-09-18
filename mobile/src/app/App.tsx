@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../theme/useTheme';
 import { AuthProvider } from './providers/AuthProvider';
 import { WalletProvider } from './providers/WalletProvider';
+import { BalanceVisibilityProvider } from './providers/BalanceVisibilityProvider';
 import { RootNavigator } from './navigation/RootNavigator';
 import { ScreenPrivacyShield } from '../components/common/ScreenPrivacyShield';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
@@ -42,7 +43,9 @@ export const App: React.FC = () => {
           <ScreenPrivacyShield>
             <AuthProvider>
               <WalletProvider>
-                <RootNavigator />
+                <BalanceVisibilityProvider>
+                  <RootNavigator />
+                </BalanceVisibilityProvider>
               </WalletProvider>
             </AuthProvider>
           </ScreenPrivacyShield>

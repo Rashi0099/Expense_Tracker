@@ -33,6 +33,7 @@ import { DataEvents } from '../../database/sqlite/DataEvents';
 import { APP_LOGO } from '../../assets/appLogo';
 import { CashflowOverviewCard } from './components/CashflowOverviewCard';
 import { useWallet } from '../../app/providers/WalletProvider';
+import { useBalanceVisibility } from '../../app/providers/BalanceVisibilityProvider';
 import { IconWallet } from '../../components/common/NavIcons';
 import { BottomSheet } from '../../components/common/BottomSheet';
 
@@ -43,6 +44,7 @@ export const DashboardScreen: React.FC = () => {
   const { isOffline } = useNetworkState();
   const { syncNow } = useSync();
   const { activeWallet, activeWalletId, wallets, setActiveWalletId } = useWallet();
+  const { isBalanceHidden } = useBalanceVisibility();
 
   const [showWalletModal, setShowWalletModal] = useState(false);
 
@@ -465,7 +467,11 @@ export const DashboardScreen: React.FC = () => {
                       },
                     ]}
                   >
-                    <CurrencyText amountCents={wallet.balanceCents || 0} currency={currency} />
+                    {isBalanceHidden ? (
+                      '••••'
+                    ) : (
+                      <CurrencyText amountCents={wallet.balanceCents || 0} currency={currency} />
+                    )}
                   </Text>
                 </TouchableOpacity>
               );
