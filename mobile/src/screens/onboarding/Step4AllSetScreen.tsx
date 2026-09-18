@@ -8,106 +8,89 @@ import {
   Animated,
   SafeAreaView,
   StatusBar,
-  Dimensions,
   Easing,
 } from 'react-native';
 import { APP_LOGO } from '../../assets/appLogo';
 import { useAuth } from '../../app/providers/AuthProvider';
 
-const { width } = Dimensions.get('window');
-
 export const Step4AllSetScreen: React.FC = () => {
   const { markOnboardingComplete } = useAuth();
   const [isNavigating, setIsNavigating] = useState(false);
 
-  // ─── Hero Celebration Animations (Rotating & Bouncing Badge) ─────────────
-  const heroScale = useRef(new Animated.Value(0.1)).current;
+  // ─── Hero Celebration Badge Animations (Fast, Snappy & Aesthetic) ────────
+  const heroScale = useRef(new Animated.Value(0.2)).current;
   const heroRotate = useRef(new Animated.Value(0)).current;
-  const heroGlowScale = useRef(new Animated.Value(0.8)).current;
+  const heroGlowScale = useRef(new Animated.Value(0.9)).current;
   const heroGlowOpacity = useRef(new Animated.Value(0)).current;
 
-  // ─── Confetti / Sparkle Pop Animations ──────────────────────────────────
-  const sparkle1 = useRef(new Animated.Value(0)).current;
-  const sparkle2 = useRef(new Animated.Value(0)).current;
-  const sparkle3 = useRef(new Animated.Value(0)).current;
-  const sparkle4 = useRef(new Animated.Value(0)).current;
-
-  // ─── Title & Subtitle Fade-in ───────────────────────────────────────────
+  // ─── Title & Subtitle Fade ───────────────────────────────────────────────
   const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslateY = useRef(new Animated.Value(20)).current;
+  const textTranslateY = useRef(new Animated.Value(14)).current;
 
-  // ─── Checklist Items Ticks Animations ───────────────────────────────────
+  // ─── Fast Sequential Checklist Ticks ─────────────────────────────────────
   const row1Scale = useRef(new Animated.Value(0)).current;
-  const row1Rotate = useRef(new Animated.Value(-45)).current;
+  const row1Rotate = useRef(new Animated.Value(-35)).current;
   const row1RingScale = useRef(new Animated.Value(0.8)).current;
   const row1RingOpacity = useRef(new Animated.Value(0)).current;
   const row1BgHighlight = useRef(new Animated.Value(0)).current;
 
   const row2Scale = useRef(new Animated.Value(0)).current;
-  const row2Rotate = useRef(new Animated.Value(-45)).current;
+  const row2Rotate = useRef(new Animated.Value(-35)).current;
   const row2RingScale = useRef(new Animated.Value(0.8)).current;
   const row2RingOpacity = useRef(new Animated.Value(0)).current;
   const row2BgHighlight = useRef(new Animated.Value(0)).current;
 
   const row3Scale = useRef(new Animated.Value(0)).current;
-  const row3Rotate = useRef(new Animated.Value(-45)).current;
+  const row3Rotate = useRef(new Animated.Value(-35)).current;
   const row3RingScale = useRef(new Animated.Value(0.8)).current;
   const row3RingOpacity = useRef(new Animated.Value(0)).current;
   const row3BgHighlight = useRef(new Animated.Value(0)).current;
 
   // ─── Bottom Button & Pulse ──────────────────────────────────────────────
   const buttonOpacity = useRef(new Animated.Value(0)).current;
-  const buttonTranslateY = useRef(new Animated.Value(24)).current;
+  const buttonTranslateY = useRef(new Animated.Value(18)).current;
   const buttonPulse = useRef(new Animated.Value(1)).current;
 
-  // ─── Smooth Screen Exit Animation ───────────────────────────────────────
+  // ─── Screen Exit Transition ─────────────────────────────────────────────
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // 1. Hero Badge Spin & Pop in ("onn kargi tik ayi varnnu")
+    // 1. Hero Badge fast spin & pop in
     const heroAnimation = Animated.parallel([
       Animated.spring(heroScale, {
         toValue: 1,
-        friction: 4.5,
-        tension: 80,
+        friction: 5,
+        tension: 130,
         useNativeDriver: true,
       }),
       Animated.timing(heroRotate, {
         toValue: 1,
-        duration: 700,
-        easing: Easing.out(Easing.back(1.5)),
+        duration: 380,
+        easing: Easing.out(Easing.back(1.4)),
         useNativeDriver: true,
       }),
       Animated.timing(heroGlowOpacity, {
-        toValue: 0.35,
-        duration: 400,
+        toValue: 0.28,
+        duration: 250,
         useNativeDriver: true,
       }),
       Animated.spring(heroGlowScale, {
-        toValue: 1.25,
-        friction: 5,
-        tension: 60,
+        toValue: 1.2,
+        friction: 6,
+        tension: 90,
         useNativeDriver: true,
       }),
     ]);
 
-    // 2. Confetti Sparkles Pop
-    const sparklesAnim = Animated.stagger(80, [
-      Animated.spring(sparkle1, { toValue: 1, friction: 4, useNativeDriver: true }),
-      Animated.spring(sparkle2, { toValue: 1, friction: 4, useNativeDriver: true }),
-      Animated.spring(sparkle3, { toValue: 1, friction: 4, useNativeDriver: true }),
-      Animated.spring(sparkle4, { toValue: 1, friction: 4, useNativeDriver: true }),
-    ]);
-
-    // 3. Title slide up
+    // 2. Title & Subtitle fast entry
     const titleAnim = Animated.parallel([
-      Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.spring(textTranslateY, { toValue: 0, friction: 6, useNativeDriver: true }),
+      Animated.timing(textOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(textTranslateY, { toValue: 0, friction: 6, tension: 120, useNativeDriver: true }),
     ]);
 
-    // 4. Tick Helper for each checklist item
-    const makeTickAnim = (
+    // 3. Fast Snappy Tick Helper (~110ms per row)
+    const makeFastTickAnim = (
       scale: Animated.Value,
       rotate: Animated.Value,
       ringScale: Animated.Value,
@@ -118,61 +101,59 @@ export const Step4AllSetScreen: React.FC = () => {
         Animated.spring(scale, {
           toValue: 1,
           friction: 4,
-          tension: 140,
+          tension: 180,
           useNativeDriver: true,
         }),
         Animated.timing(rotate, {
           toValue: 0,
-          duration: 220,
+          duration: 120,
           useNativeDriver: true,
         }),
         Animated.sequence([
-          Animated.timing(ringOpacity, { toValue: 0.8, duration: 80, useNativeDriver: true }),
+          Animated.timing(ringOpacity, { toValue: 0.7, duration: 60, useNativeDriver: true }),
           Animated.parallel([
-            Animated.timing(ringScale, { toValue: 1.8, duration: 250, useNativeDriver: true }),
-            Animated.timing(ringOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+            Animated.timing(ringScale, { toValue: 1.6, duration: 160, useNativeDriver: true }),
+            Animated.timing(ringOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
           ]),
         ]),
         Animated.timing(bg, {
           toValue: 1,
-          duration: 250,
+          duration: 150,
           useNativeDriver: false,
         }),
       ]);
 
-    // 5. Button Entry & Alive Pulse
+    // 4. CTA Button Entry
     const buttonEntry = Animated.parallel([
-      Animated.timing(buttonOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.spring(buttonTranslateY, { toValue: 0, friction: 5, tension: 90, useNativeDriver: true }),
+      Animated.timing(buttonOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.spring(buttonTranslateY, { toValue: 0, friction: 5, tension: 120, useNativeDriver: true }),
     ]);
 
-    // Master Sequence
+    // Master Fast Sequence: Crisp, snappy, finished in ~650ms total!
     Animated.sequence([
-      Animated.delay(100),
-      heroAnimation,
-      sparklesAnim,
-      titleAnim,
-      Animated.delay(150),
-      makeTickAnim(row1Scale, row1Rotate, row1RingScale, row1RingOpacity, row1BgHighlight),
-      Animated.delay(180),
-      makeTickAnim(row2Scale, row2Rotate, row2RingScale, row2RingOpacity, row2BgHighlight),
-      Animated.delay(180),
-      makeTickAnim(row3Scale, row3Rotate, row3RingScale, row3RingOpacity, row3BgHighlight),
-      Animated.delay(140),
+      Animated.delay(50),
+      Animated.parallel([heroAnimation, titleAnim]),
+      Animated.delay(90),
+      makeFastTickAnim(row1Scale, row1Rotate, row1RingScale, row1RingOpacity, row1BgHighlight),
+      Animated.delay(110),
+      makeFastTickAnim(row2Scale, row2Rotate, row2RingScale, row2RingOpacity, row2BgHighlight),
+      Animated.delay(110),
+      makeFastTickAnim(row3Scale, row3Rotate, row3RingScale, row3RingOpacity, row3BgHighlight),
+      Animated.delay(90),
       buttonEntry,
     ]).start(() => {
-      // Gentle breathing pulse on the CTA button
+      // Gentle alive pulse on button
       Animated.loop(
         Animated.sequence([
           Animated.timing(buttonPulse, {
-            toValue: 1.03,
-            duration: 900,
+            toValue: 1.025,
+            duration: 800,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
           Animated.timing(buttonPulse, {
             toValue: 1.0,
-            duration: 900,
+            duration: 800,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
@@ -186,18 +167,18 @@ export const Step4AllSetScreen: React.FC = () => {
     if (isNavigating) return;
     setIsNavigating(true);
 
-    // Smooth exit animation
+    // Smooth elegant fade-out into dashboard
     Animated.parallel([
       Animated.timing(screenOpacity, {
         toValue: 0,
-        duration: 280,
-        easing: Easing.inOut(Easing.ease),
+        duration: 220,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
       Animated.timing(screenScale, {
-        toValue: 0.96,
-        duration: 280,
-        easing: Easing.inOut(Easing.ease),
+        toValue: 0.97,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -207,20 +188,20 @@ export const Step4AllSetScreen: React.FC = () => {
 
   const heroSpinDeg = heroRotate.interpolate({
     inputRange: [0, 1],
-    outputRange: ['-180deg', '0deg'],
+    outputRange: ['-120deg', '0deg'],
   });
 
   const row1RotateDeg = row1Rotate.interpolate({
-    inputRange: [-45, 0],
-    outputRange: ['-45deg', '0deg'],
+    inputRange: [-35, 0],
+    outputRange: ['-35deg', '0deg'],
   });
   const row2RotateDeg = row2Rotate.interpolate({
-    inputRange: [-45, 0],
-    outputRange: ['-45deg', '0deg'],
+    inputRange: [-35, 0],
+    outputRange: ['-35deg', '0deg'],
   });
   const row3RotateDeg = row3Rotate.interpolate({
-    inputRange: [-45, 0],
-    outputRange: ['-45deg', '0deg'],
+    inputRange: [-35, 0],
+    outputRange: ['-35deg', '0deg'],
   });
 
   return (
@@ -236,9 +217,8 @@ export const Step4AllSetScreen: React.FC = () => {
           },
         ]}
       >
-        {/* ─── Hero Rotating Celebration Badge ─────────────────────────────── */}
+        {/* ─── Hero Rotating Badge (Clean, Aesthetic, No floating emoji sparkles) ─── */}
         <View style={styles.heroSection}>
-          {/* Subtle Glow Ring behind */}
           <Animated.View
             style={[
               styles.glowRing,
@@ -249,29 +229,6 @@ export const Step4AllSetScreen: React.FC = () => {
             ]}
           />
 
-          {/* Floating Confetti Sparkles */}
-          <Animated.Text
-            style={[styles.sparkle, styles.spTopLeft, { transform: [{ scale: sparkle1 }] }]}
-          >
-            ✨
-          </Animated.Text>
-          <Animated.Text
-            style={[styles.sparkle, styles.spTopRight, { transform: [{ scale: sparkle2 }] }]}
-          >
-            🎉
-          </Animated.Text>
-          <Animated.Text
-            style={[styles.sparkle, styles.spBottomLeft, { transform: [{ scale: sparkle3 }] }]}
-          >
-            🌿
-          </Animated.Text>
-          <Animated.Text
-            style={[styles.sparkle, styles.spBottomRight, { transform: [{ scale: sparkle4 }] }]}
-          >
-            ⭐
-          </Animated.Text>
-
-          {/* Central Rotating Badge */}
           <Animated.View
             style={[
               styles.heroBadge,
@@ -289,7 +246,7 @@ export const Step4AllSetScreen: React.FC = () => {
           </Animated.View>
         </View>
 
-        {/* ─── Celebration Title & Tagline ─────────────────────────────────── */}
+        {/* ─── Title & Subtitle ────────────────────────────────────────────── */}
         <Animated.View
           style={[
             styles.titleSection,
@@ -305,7 +262,7 @@ export const Step4AllSetScreen: React.FC = () => {
           </Text>
         </Animated.View>
 
-        {/* ─── Aesthetic Checklist Card ────────────────────────────────────── */}
+        {/* ─── Premium Checklist Card ──────────────────────────────────────── */}
         <View style={styles.card}>
           {/* Row 1: Profile saved */}
           <Animated.View
@@ -314,17 +271,16 @@ export const Step4AllSetScreen: React.FC = () => {
               {
                 backgroundColor: row1BgHighlight.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['#FFFFFF', '#F0F9F4'],
+                  outputRange: ['#FFFFFF', '#F2FAF5'],
                 }),
               },
             ]}
           >
             <View style={styles.iconCircle}>
-              <Text style={styles.rowIcon}>👤</Text>
+              <Text style={styles.rowIconText}>👤</Text>
             </View>
             <Text style={styles.rowLabel}>Profile saved</Text>
 
-            {/* Ripple Expanding Ring */}
             <Animated.View
               style={[
                 styles.tickRipple,
@@ -334,7 +290,6 @@ export const Step4AllSetScreen: React.FC = () => {
                 },
               ]}
             />
-            {/* Animated Checkmark Circle */}
             <Animated.View
               style={[
                 styles.checkCircle,
@@ -354,17 +309,16 @@ export const Step4AllSetScreen: React.FC = () => {
               {
                 backgroundColor: row2BgHighlight.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['#FFFFFF', '#F0F9F4'],
+                  outputRange: ['#FFFFFF', '#F2FAF5'],
                 }),
               },
             ]}
           >
             <View style={styles.iconCircle}>
-              <Text style={styles.rowIcon}>📋</Text>
+              <Text style={styles.rowIconText}>☰</Text>
             </View>
             <Text style={styles.rowLabel}>Expense categories set</Text>
 
-            {/* Ripple Expanding Ring */}
             <Animated.View
               style={[
                 styles.tickRipple,
@@ -374,7 +328,6 @@ export const Step4AllSetScreen: React.FC = () => {
                 },
               ]}
             />
-            {/* Animated Checkmark Circle */}
             <Animated.View
               style={[
                 styles.checkCircle,
@@ -395,17 +348,16 @@ export const Step4AllSetScreen: React.FC = () => {
               {
                 backgroundColor: row3BgHighlight.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['#FFFFFF', '#F0F9F4'],
+                  outputRange: ['#FFFFFF', '#F2FAF5'],
                 }),
               },
             ]}
           >
             <View style={styles.iconCircle}>
-              <Text style={styles.rowIcon}>📊</Text>
+              <Text style={styles.rowIconText}>📈</Text>
             </View>
             <Text style={styles.rowLabel}>Income sources set</Text>
 
-            {/* Ripple Expanding Ring */}
             <Animated.View
               style={[
                 styles.tickRipple,
@@ -415,7 +367,6 @@ export const Step4AllSetScreen: React.FC = () => {
                 },
               ]}
             />
-            {/* Animated Checkmark Circle */}
             <Animated.View
               style={[
                 styles.checkCircle,
@@ -431,7 +382,7 @@ export const Step4AllSetScreen: React.FC = () => {
 
         <View style={styles.flexSpacer} />
 
-        {/* ─── Bottom CTA with Breathing Pulse ─────────────────────────────── */}
+        {/* ─── Bottom CTA with Smooth Pulse ─────────────────────────────────── */}
         <Animated.View
           style={[
             styles.footer,
@@ -444,14 +395,14 @@ export const Step4AllSetScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.continueBtn}
             onPress={handleGoToDashboard}
-            activeOpacity={0.88}
+            activeOpacity={0.85}
           >
             <Text style={styles.continueBtnText}>Go to Dashboard</Text>
             <Text style={styles.continueBtnArrow}>→</Text>
           </TouchableOpacity>
 
           <View style={styles.mottoWrapper}>
-            <Text style={styles.mottoText}>Let’s build a smarter you, financially ✨</Text>
+            <Text style={styles.mottoText}>Let’s build a smarter you, financially.</Text>
           </View>
         </Animated.View>
       </Animated.View>
@@ -467,24 +418,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 22,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: 24,
     justifyContent: 'space-between',
   },
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 24,
+    marginBottom: 8,
     position: 'relative',
     height: 110,
   },
   glowRing: {
     position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#A7D7C5',
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    backgroundColor: '#1D5842',
   },
   heroBadge: {
     width: 86,
@@ -495,11 +446,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: '#1D5842',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.16,
     shadowRadius: 14,
     elevation: 6,
-    borderWidth: 2,
-    borderColor: '#D4E8DC',
+    borderWidth: 1.5,
+    borderColor: '#D7E5DC',
     position: 'relative',
   },
   innerBadgeRing: {
@@ -517,8 +468,8 @@ const styles = StyleSheet.create({
   },
   badgeCheckOverlay: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
+    bottom: -3,
+    right: -3,
     width: 26,
     height: 26,
     borderRadius: 13,
@@ -533,73 +484,66 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
-  sparkle: {
-    position: 'absolute',
-    fontSize: 20,
-  },
-  spTopLeft: { top: 6, left: width * 0.22 },
-  spTopRight: { top: 8, right: width * 0.22 },
-  spBottomLeft: { bottom: 10, left: width * 0.2 },
-  spBottomRight: { bottom: 12, right: width * 0.2 },
   titleSection: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 26,
   },
   title: {
-    fontSize: 28,
+    fontSize: 27,
     fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.6,
+    color: '#17233C',
+    letterSpacing: -0.5,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14.5,
+    fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 21,
+    lineHeight: 20,
     fontWeight: '400',
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderWidth: 1.5,
-    borderColor: '#D4E8DC',
-    shadowColor: '#1D5842',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    borderColor: '#E2DDD4',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 13,
     paddingHorizontal: 10,
-    borderRadius: 14,
-    marginVertical: 3,
+    borderRadius: 12,
+    marginVertical: 2,
     position: 'relative',
   },
   lastRow: {
     marginBottom: 0,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#1D5842',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
-  rowIcon: {
-    fontSize: 18,
+  rowIconText: {
+    fontSize: 17,
+    color: '#FFFFFF',
   },
   rowLabel: {
     flex: 1,
-    fontSize: 15.5,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1E293B',
     letterSpacing: -0.2,
@@ -641,20 +585,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     shadowColor: '#1D5842',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 4,
   },
   continueBtnText: {
     color: '#FFFFFF',
-    fontSize: 16.5,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   continueBtnArrow: {
     color: '#FFFFFF',
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '700',
   },
   mottoWrapper: {
@@ -662,8 +606,8 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   mottoText: {
-    fontSize: 12,
-    color: '#718096',
+    fontSize: 11.5,
+    color: '#8A99AD',
     fontStyle: 'italic',
     fontWeight: '500',
   },
