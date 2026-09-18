@@ -15,7 +15,7 @@ export const ENV = {
   API_BASE_URL: 'http://51.21.200.201/api/v1',
   SQLITE_DB_NAME: 'expenseflow_local.db',
   SYNC_INTERVAL_SECONDS: 30,
-  CLIENT_VERSION: '1.0.35',
+  CLIENT_VERSION: '1.0.37',
   PLATFORM: Platform.OS === 'android' ? 'ANDROID' : Platform.OS === 'ios' ? 'IOS' : 'WEB',
   TIMEOUT_MS: 5000,
 } as const;

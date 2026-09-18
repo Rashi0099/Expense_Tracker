@@ -66,6 +66,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const markOnboardingComplete = () => {
+    if (user?.id) {
+      AsyncStorage.setItem(`${ONBOARDING_KEY_PREFIX}${user.id}`, '1').catch(() => {});
+    }
     setIsOnboardingCompleted(true);
   };
 
@@ -75,13 +78,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
 
     async function bootstrap() {
-      // Safety guard: Ensure the app never hangs on the splash loading screen for more than 1.5 seconds
+      // Safety guard: Ensure the app never hangs on the splash loading screen for more than 600ms
       safetyTimer = setTimeout(() => {
         if (isMounted) {
-          console.warn('[AuthProvider] Bootstrap safety timeout reached (1.5s); unlocking UI');
+          console.warn('[AuthProvider] Bootstrap safety timeout reached (600ms); unlocking UI');
           setIsLoading(false);
         }
-      }, 1500);
+      }, 600);
 
       try {
         // Ensure device ID exists
@@ -109,15 +112,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const refreshToken = await SecureStorage.getRefreshToken().catch(() => null);
 
         if (isMounted && cachedUser && refreshToken) {
-          // Test user 9999999999 always sees onboarding on each app entry
-          let onboardingDone = false;
-          if (isTestPhoneNumber(cachedUser.phoneNumber)) {
-            await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`).catch(() => {});
-            onboardingDone = false;
-          } else {
-            const onboardingFlag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`).catch(() => null);
-            onboardingDone = !!onboardingFlag;
-          }
+          const onboardingFlag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`).catch(() => null);
+          const onboardingDone = !!onboardingFlag;
 
           setIsOnboardingCompleted(onboardingDone);
           setUser(cachedUser);
@@ -202,15 +198,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await SecureStorage.setRefreshToken(res.tokens.refreshToken);
     await SecureStorage.setUserData(res.user);
 
-    let onboardingDone = false;
-    if (isTestPhoneNumber(res.user.phoneNumber)) {
-      await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      onboardingDone = false;
-    } else {
-      const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      onboardingDone = !!flag;
-    }
-    setIsOnboardingCompleted(onboardingDone);
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
     securityLockService.unlockSession();
@@ -231,15 +220,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await SecureStorage.setRefreshToken(res.tokens.refreshToken);
     await SecureStorage.setUserData(res.user);
 
-    let onboardingDone = false;
-    if (isTestPhoneNumber(phoneNumber) || isTestPhoneNumber(res.user.phoneNumber)) {
-      await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      onboardingDone = false;
-    } else {
-      const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
-      onboardingDone = !!flag;
-    }
-    setIsOnboardingCompleted(onboardingDone);
+    const flag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${res.user.id}`);
+    setIsOnboardingCompleted(!!flag);
     setUser(res.user);
     DatabaseManager.getInstance().setCurrentUser(res.user.id);
     securityLockService.unlockSession();

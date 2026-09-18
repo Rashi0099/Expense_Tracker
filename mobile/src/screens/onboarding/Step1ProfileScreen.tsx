@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  StatusBar, SafeAreaView, useWindowDimensions,
+  StatusBar, SafeAreaView, useWindowDimensions, Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../app/navigation/types';
@@ -17,7 +17,8 @@ const TILE_MARGIN = 6;
 
 export const Step1ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { width: windowWidth } = useWindowDimensions();
-  const tileWidth = Math.floor((windowWidth - 32 - TILE_MARGIN * (COLS - 1)) / COLS);
+  const safeWidth = windowWidth > 0 ? windowWidth : Dimensions.get('window').width || 360;
+  const tileWidth = Math.max(68, Math.floor((safeWidth - 32 - TILE_MARGIN * (COLS - 1)) / COLS));
   const { profile, setProfile, skipOnboarding } = useOnboarding();
   const { user, markOnboardingComplete } = useAuth();
 
@@ -45,6 +46,7 @@ export const Step1ProfileScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.heading}>Which best describes you?</Text>
 

@@ -17,7 +17,7 @@ export const OnboardingNavigator: React.FC = () => {
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          gestureEnabled: true,
+          gestureEnabled: false,
         }}
       >
         <Stack.Screen name="OnboardingStep1" component={Step1ProfileScreen} />

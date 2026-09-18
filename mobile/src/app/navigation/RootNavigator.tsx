@@ -2,9 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, Image, StyleSheet, Linking } from 'react-native';
 import {
   NavigationContainer,
-  LinkingOptions,
   useNavigationContainerRef,
-  getStateFromPath,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
@@ -22,57 +20,7 @@ import { APP_LOGO } from '../../assets/appLogo';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-/**
- * Deep Linking configuration supporting quick actions, widgets, and external shortcuts:
- * Schemes: `expense-tracker://`, `expenseapp://`, `expensemanagement://`
- * Supported paths: `expense/new`, `quick-add`, `dashboard`, `expenses`, `budgets`, etc.
- */
-const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['expense-tracker://', 'expenseapp://', 'expensemanagement://'],
-  config: {
-    screens: {
-      Auth: {
-        screens: {
-          Login: 'login',
-          Register: 'register',
-        },
-      },
-      Main: {
-        screens: {
-          QuickAdd: 'expense/new',
-          Home: 'dashboard',
-          Expenses: 'expenses',
-          Budgets: 'budgets',
-          Settings: 'settings',
-        },
-      },
-      Income: 'income',
-      Categories: 'categories',
-      Recurring: 'recurring',
-    },
-  },
-  getStateFromPath: (path, options) => {
-    const clean = path.replace(/^\/+/, '');
-    if (clean === 'login' || clean === 'auth') {
-      return {
-        routes: [{ name: 'Auth', state: { routes: [{ name: 'Login' }] } }],
-      };
-    }
-    if (clean === 'quick-add' || clean === 'expense/new' || clean === 'add-expense') {
-      return {
-        routes: [
-          {
-            name: 'Main',
-            state: {
-              routes: [{ name: 'QuickAdd' }],
-            },
-          },
-        ],
-      };
-    }
-    return getStateFromPath(path, options);
-  },
-};
+
 
 export const RootNavigator: React.FC = () => {
   const {
@@ -142,40 +90,32 @@ export const RootNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      linking={isAuthenticated ? linking : undefined}
-      fallback={
-        <View style={[styles.loading, { backgroundColor: theme.colors.background }]}>
-          <Image
-            source={APP_LOGO}
-            style={styles.splashLogo}
-            resizeMode="contain"
-          />
-          <LoadingState message="Initializing..." />
-        </View>
-      }
-    >
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          animation: 'none',
           contentStyle: { backgroundColor: theme.colors.background },
         }}
       >
         {!isAuthenticated ? (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
+          <Stack.Screen
+            name="Auth"
+            component={AuthNavigator}
+            options={{ animation: 'none' }}
+          />
         ) : !isOnboardingCompleted ? (
           <Stack.Screen
             name="Onboarding"
             component={OnboardingNavigator}
-            options={{ animation: 'fade' }}
+            options={{ animation: 'none' }}
           />
         ) : (
           <>
             <Stack.Screen
               name="Main"
               component={MainTabNavigator}
-              options={{ animation: 'fade' }}
+              options={{ animation: 'none' }}
             />
             <Stack.Screen
               name="Income"

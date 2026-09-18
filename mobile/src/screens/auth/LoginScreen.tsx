@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../app/navigation/types';
 import { Screen } from '../../components/common/Screen';
@@ -34,6 +34,7 @@ export const LoginScreen: React.FC<Props> = () => {
   }, [countdown]);
 
   const handleSendPhoneOtp = async () => {
+    Keyboard.dismiss();
     const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
     if (!cleanPhone) {
       setError('Please enter your mobile phone number.');
@@ -60,6 +61,7 @@ export const LoginScreen: React.FC<Props> = () => {
   };
 
   const handleVerifyPhoneOtp = async (codeToVerify?: string) => {
+    Keyboard.dismiss();
     const code = (codeToVerify || otpCode).trim();
     if (!code || code.length < 6) {
       setError('Please enter the 6-digit OTP code.');

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  StatusBar, SafeAreaView, useWindowDimensions,
+  StatusBar, SafeAreaView, useWindowDimensions, Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../app/navigation/types';
@@ -19,7 +19,8 @@ const COLS = 3;
 
 export const Step2ExpenseCategoriesScreen: React.FC<Props> = ({ navigation }) => {
   const { width: windowWidth } = useWindowDimensions();
-  const chipWidth = Math.floor((windowWidth - PADDING * 2 - GAP * (COLS - 1)) / COLS);
+  const safeWidth = windowWidth > 0 ? windowWidth : Dimensions.get('window').width || 360;
+  const chipWidth = Math.max(90, Math.floor((safeWidth - PADDING * 2 - GAP * (COLS - 1)) / COLS));
   const { selectedExpenseIds, toggleExpenseCategory, skipOnboarding } = useOnboarding();
   const { user, markOnboardingComplete } = useAuth();
 
@@ -50,6 +51,7 @@ export const Step2ExpenseCategoriesScreen: React.FC<Props> = ({ navigation }) =>
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.heading}>What do you usually spend on?</Text>
         <Text style={styles.subheading}>Select the categories you want to track.</Text>

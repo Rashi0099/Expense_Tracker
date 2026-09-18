@@ -31,7 +31,12 @@ export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({
             <Text style={styles.logoTagline}>A smarter you, financially.</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={onSkip} style={styles.skipBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={onSkip}
+          style={styles.skipBtn}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>
