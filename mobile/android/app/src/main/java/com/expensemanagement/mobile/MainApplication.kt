@@ -26,30 +26,37 @@ class MainApplication : Application(), ReactApplication {
 
         override fun getJSBundleFile(): String? {
           val otaDir = File(applicationContext.filesDir, "ota_bundle")
-          val versionFile = File(otaDir, "version.txt")
+          if (!otaDir.exists()) {
+            return super.getJSBundleFile()
+          }
 
           try {
             val packageInfo = applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
             val apkLastUpdateTime = packageInfo.lastUpdateTime
-            if (versionFile.exists() && versionFile.lastModified() < apkLastUpdateTime) {
-              // App binary was updated or installed after the OTA bundle was stored;
-              // purge stale OTA bundle so the new APK's bundle runs cleanly.
+            val versionFile = File(otaDir, "version.txt")
+
+            // If versionFile doesn't exist, or was created before this APK was installed/updated,
+            // the APK binary is newer: purge the OTA directory and load default bundle.
+            if (!versionFile.exists() || versionFile.lastModified() < apkLastUpdateTime) {
               otaDir.deleteRecursively()
               return super.getJSBundleFile()
             }
-          } catch (_: Exception) {}
 
-          if (versionFile.exists() && versionFile.isFile) {
             val version = versionFile.readText().trim()
-            val versionedBundle = File(otaDir, "bundle_$version.bundle")
-            if (versionedBundle.exists() && versionedBundle.isFile && versionedBundle.length() > 0) {
-              return versionedBundle.absolutePath
+            if (version.isNotEmpty()) {
+              val versionedBundle = File(otaDir, "bundle_$version.bundle")
+              if (versionedBundle.exists() && versionedBundle.isFile && versionedBundle.length() > 100000) {
+                return versionedBundle.absolutePath
+              }
+              val defaultOtaBundle = File(otaDir, "index.android.bundle")
+              if (defaultOtaBundle.exists() && defaultOtaBundle.isFile && defaultOtaBundle.length() > 100000) {
+                return defaultOtaBundle.absolutePath
+              }
             }
+          } catch (e: Exception) {
+            e.printStackTrace()
           }
-          val otaBundle = File(otaDir, "index.android.bundle")
-          if (otaBundle.exists() && otaBundle.isFile && otaBundle.length() > 0) {
-            return otaBundle.absolutePath
-          }
+
           return super.getJSBundleFile()
         }
 

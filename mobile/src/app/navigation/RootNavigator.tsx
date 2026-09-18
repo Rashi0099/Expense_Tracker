@@ -31,6 +31,12 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['expense-tracker://', 'expenseapp://', 'expensemanagement://'],
   config: {
     screens: {
+      Auth: {
+        screens: {
+          Login: 'login',
+          Register: 'register',
+        },
+      },
       Main: {
         screens: {
           QuickAdd: 'expense/new',
@@ -47,6 +53,11 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
   getStateFromPath: (path, options) => {
     const clean = path.replace(/^\/+/, '');
+    if (clean === 'login' || clean === 'auth') {
+      return {
+        routes: [{ name: 'Auth', state: { routes: [{ name: 'Login' }] } }],
+      };
+    }
     if (clean === 'quick-add' || clean === 'expense/new' || clean === 'add-expense') {
       return {
         routes: [
@@ -131,7 +142,20 @@ export const RootNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} linking={linking}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={isAuthenticated ? linking : undefined}
+      fallback={
+        <View style={[styles.loading, { backgroundColor: theme.colors.background }]}>
+          <Image
+            source={APP_LOGO}
+            style={styles.splashLogo}
+            resizeMode="contain"
+          />
+          <LoadingState message="Initializing..." />
+        </View>
+      }
+    >
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

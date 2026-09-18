@@ -79,6 +79,8 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
     };
   }, [isAuthenticated, isLoading, isPrivacyShieldEnabled]);
 
+  const showOverlay = isShieldActive && isAuthenticated && !isLoading && isPrivacyShieldEnabled;
+
   return (
     <ScreenPrivacyContext.Provider
       value={{
@@ -86,38 +88,33 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
         setPrivacyShieldEnabled,
       }}
     >
-      <View style={styles.container}>
-        {children}
+      {children}
 
-        {isShieldActive && isAuthenticated && !isLoading && isPrivacyShieldEnabled && (
-          <View
-            style={[
-              styles.shieldOverlay,
-              { backgroundColor: theme.colors.background },
-            ]}
-          >
-            <Image
-              source={APP_LOGO}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-              Spending Book
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-              🔒 Financial details protected
-            </Text>
-          </View>
-        )}
-      </View>
+      {showOverlay ? (
+        <View
+          style={[
+            styles.shieldOverlay,
+            { backgroundColor: theme.colors.background },
+          ]}
+        >
+          <Image
+            source={APP_LOGO}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+            Spending Book
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+            🔒 Financial details protected
+          </Text>
+        </View>
+      ) : null}
     </ScreenPrivacyContext.Provider>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   shieldOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 99999,

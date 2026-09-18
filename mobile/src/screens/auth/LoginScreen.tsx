@@ -135,7 +135,6 @@ export const LoginScreen: React.FC<Props> = () => {
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             keyboardType="phone-pad"
-            autoFocus
             placeholder="e.g. 98765 43210"
           />
 
@@ -220,7 +219,7 @@ export const LoginScreen: React.FC<Props> = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    justifyContent: 'center',
+    paddingTop: 36,
   },
   header: {
     marginBottom: 28,
