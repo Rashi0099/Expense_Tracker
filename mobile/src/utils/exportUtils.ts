@@ -64,7 +64,7 @@ function escapeCsvValue(val: string | number | undefined | null): string {
 }
 
 /**
- * Generates RFC 4180 CSV string for Excel, Google Sheets, Numbers
+ * Generates RFC 4180 CSV string with UTF-8 BOM for Microsoft Excel, Google Sheets, Numbers
  */
 export function generateCSV(items: UnifiedTransactionExportItem[]): string {
   const headers = [
@@ -97,7 +97,7 @@ export function generateCSV(items: UnifiedTransactionExportItem[]): string {
     ].join(',');
   });
 
-  return [headerRow, ...rows].join('\n');
+  return '\uFEFF' + [headerRow, ...rows].join('\n');
 }
 
 /**
@@ -174,6 +174,57 @@ export async function shareExportContent(
     return result.action === Share.sharedAction;
   } catch (err: any) {
     Alert.alert('Export Error', err?.message || 'Could not open share sheet.');
+    return false;
+  }
+}
+
+/**
+ * Generates and shares a genuine multi-page vector PDF report with summary cards and transaction table
+ */
+export async function shareExportPdf(
+  fileName: string,
+  title: string,
+  currency: string,
+  items: UnifiedTransactionExportItem[]
+): Promise<boolean> {
+  try {
+    let totalIncomeCents = 0;
+    let totalExpenseCents = 0;
+    items.forEach((item) => {
+      if (item.type === 'INCOME') totalIncomeCents += item.amountCents;
+      if (item.type === 'EXPENSE') totalExpenseCents += item.amountCents;
+    });
+    const netCents = totalIncomeCents - totalExpenseCents;
+
+    const currencySymbol = currency === 'INR' ? '₹' : currency;
+    const totalIncomeStr = `+${currencySymbol} ${(totalIncomeCents / 100).toFixed(2)}`;
+    const totalExpenseStr = `-${currencySymbol} ${(totalExpenseCents / 100).toFixed(2)}`;
+    const netSign = netCents >= 0 ? '+' : '-';
+    const netCashflowStr = `${netSign}${currencySymbol} ${(Math.abs(netCents) / 100).toFixed(2)}`;
+
+    if (Platform.OS === 'android' && NativeModules.FileShareModule?.sharePdf) {
+      await NativeModules.FileShareModule.sharePdf(
+        fileName,
+        title,
+        currencySymbol,
+        JSON.stringify(items),
+        totalIncomeStr,
+        totalExpenseStr,
+        netCashflowStr,
+        `Share ${fileName}`
+      );
+      return true;
+    }
+
+    // Fallback if native PDF generator is unavailable
+    const statement = generateFinancialStatement(items, currency, title);
+    const result = await Share.share({
+      title: fileName,
+      message: statement,
+    });
+    return result.action === Share.sharedAction;
+  } catch (err: any) {
+    Alert.alert('PDF Export Error', err?.message || 'Could not export PDF report.');
     return false;
   }
 }

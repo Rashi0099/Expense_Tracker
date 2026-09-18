@@ -39,6 +39,7 @@ import {
   generateCSV,
   generateFinancialStatement,
   shareExportContent,
+  shareExportPdf,
 } from '../../utils/exportUtils';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 import { PAYMENT_METHODS } from '../../app/config/constants';
@@ -438,6 +439,30 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
   };
 
   // Export handlers
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const items = await fetchExportItems();
+      if (items.length === 0) {
+        Alert.alert('No Records', 'There are no transactions to export with the current filters.');
+        return;
+      }
+      setIsExportModalOpen(false);
+      const periodName = datePreset === 'ALL' ? 'Complete Ledger' : datePreset.replace(/_/g, ' ');
+      const title = `${selectedTab === 'EXPENSE' ? 'Expense' : 'Income'} Statement — ${periodName}`;
+      await shareExportPdf(
+        `spending_book_report_${getTodayDateString()}.pdf`,
+        title,
+        currency,
+        items
+      );
+    } catch (err: any) {
+      Alert.alert('PDF Export Failed', err?.message || 'Could not generate PDF report.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
@@ -450,7 +475,7 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
       setIsExportModalOpen(false);
       await shareExportContent(`spending_book_export_${getTodayDateString()}.csv`, csv, 'text/csv');
     } catch (err: any) {
-      Alert.alert('Export Failed', err?.message || 'Could not export data.');
+      Alert.alert('Export Failed', err?.message || 'Could not export Excel file.');
     } finally {
       setIsExporting(false);
     }
@@ -1180,6 +1205,30 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
                   backgroundColor: theme.colors.surfaceSubtle,
                 },
               ]}
+              onPress={handleExportPDF}
+              disabled={isExporting}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.exportOptionEmoji}>📑</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.exportOptionTitle, { color: theme.colors.textPrimary }]}>
+                  PDF Financial Report (.pdf)
+                </Text>
+                <Text style={[styles.exportOptionDesc, { color: theme.colors.textMuted }]}>
+                  Printable statement with summary cards & transaction breakdown
+                </Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.exportOptionCard,
+                {
+                  borderColor: theme.colors.surfaceBorder,
+                  backgroundColor: theme.colors.surfaceSubtle,
+                },
+              ]}
               onPress={handleExportCSV}
               disabled={isExporting}
               activeOpacity={0.7}
@@ -1187,10 +1236,10 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
               <Text style={styles.exportOptionEmoji}>📊</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.exportOptionTitle, { color: theme.colors.textPrimary }]}>
-                  CSV Spreadsheet (.csv)
+                  Excel Spreadsheet (.csv)
                 </Text>
                 <Text style={[styles.exportOptionDesc, { color: theme.colors.textMuted }]}>
-                  Compatible with Microsoft Excel, Google Sheets, & Apple Numbers
+                  Formatted with UTF-8 BOM for Microsoft Excel & Google Sheets
                 </Text>
               </View>
               <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
@@ -1211,10 +1260,10 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
               <Text style={styles.exportOptionEmoji}>📄</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.exportOptionTitle, { color: theme.colors.textPrimary }]}>
-                  Financial Statement (.txt)
+                  Text Statement (.txt)
                 </Text>
                 <Text style={[styles.exportOptionDesc, { color: theme.colors.textMuted }]}>
-                  Formatted accounting summary ready to share via WhatsApp or Email
+                  Plain text ledger ready to share directly in chat or notes
                 </Text>
               </View>
               <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
