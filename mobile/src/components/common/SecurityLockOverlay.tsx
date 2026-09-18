@@ -13,9 +13,11 @@ import {
 import { securityLockService } from '../../services/securityLockService';
 import { APP_LOGO } from '../../assets/appLogo';
 import { useTheme } from '../../theme/useTheme';
+import { useAuth } from '../../app/providers/AuthProvider';
 
 export const SecurityLockOverlay: React.FC = () => {
   const { theme, isDark } = useTheme();
+  const { isAuthenticated, isLoading } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
   const [enteredPin, setEnteredPin] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -24,13 +26,19 @@ export const SecurityLockOverlay: React.FC = () => {
 
   // Check lock requirement
   const checkLockState = useCallback(async () => {
+    if (isLoading || !isAuthenticated) {
+      setIsLocked(false);
+      return;
+    }
     const shouldLock = await securityLockService.shouldShowLock();
     if (shouldLock) {
       setIsLocked(true);
       setEnteredPin('');
       setErrorMessage(null);
+    } else {
+      setIsLocked(false);
     }
-  }, []);
+  }, [isLoading, isAuthenticated]);
 
   useEffect(() => {
     checkLockState();
@@ -117,7 +125,7 @@ export const SecurityLockOverlay: React.FC = () => {
     }
   };
 
-  if (!isLocked) {
+  if (!isLocked || isLoading || !isAuthenticated) {
     return null;
   }
 

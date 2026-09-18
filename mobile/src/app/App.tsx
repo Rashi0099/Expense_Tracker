@@ -46,11 +46,11 @@ export const App: React.FC = () => {
               <WalletProvider>
                 <BalanceVisibilityProvider>
                   <RootNavigator />
+                  <SecurityLockOverlay />
                 </BalanceVisibilityProvider>
               </WalletProvider>
             </AuthProvider>
           </ScreenPrivacyShield>
-          <SecurityLockOverlay />
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
