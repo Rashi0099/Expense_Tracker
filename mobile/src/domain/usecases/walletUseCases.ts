@@ -93,9 +93,10 @@ export async function transferBetweenWalletsUseCase(
     throw new Error('Transfer amount must be greater than zero.');
   }
 
-  const [fromWallet, toWallet] = await Promise.all([
+  const [fromWallet, toWallet, fromBalance] = await Promise.all([
     walletRepo.getById(fromWalletId),
     walletRepo.getById(toWalletId),
+    walletRepo.getWalletBalanceCents(fromWalletId),
   ]);
 
   if (!fromWallet) {
@@ -103,6 +104,12 @@ export async function transferBetweenWalletsUseCase(
   }
   if (!toWallet) {
     throw new Error('Destination wallet not found.');
+  }
+
+  if (fromBalance < amountCents) {
+    const availStr = (fromBalance / 100).toFixed(2);
+    const reqStr = (amountCents / 100).toFixed(2);
+    throw new Error(`Insufficient balance in ${fromWallet.name}. Available: ${availStr}, Requested: ${reqStr}`);
   }
 
   const date = params.transactionDate || new Date().toISOString().split('T')[0];

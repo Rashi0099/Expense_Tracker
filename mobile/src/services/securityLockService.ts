@@ -296,7 +296,7 @@ export class SecurityLockService {
     if (this.lastBackgroundTime !== null) {
       const timeoutSec = await this.getTimeout();
       const elapsedSec = (Date.now() - this.lastBackgroundTime) / 1000;
-      if (elapsedSec >= timeoutSec) {
+      if (timeoutSec === 0 || elapsedSec >= timeoutSec) {
         this.isSessionUnlocked = false;
         return true;
       }

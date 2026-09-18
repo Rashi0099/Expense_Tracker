@@ -118,8 +118,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsOnboardingCompleted(onboardingDone);
           setUser(cachedUser);
           DatabaseManager.getInstance().setCurrentUser(cachedUser.id);
-          // Unlock the PIN session — user was already authenticated before this cold start
-          securityLockService.unlockSession();
           SyncEngine.getInstance().init();
           SyncEngine.getInstance().sync().catch(() => {});
           FCMPushService.getInstance().registerDevicePushToken().catch(() => {});

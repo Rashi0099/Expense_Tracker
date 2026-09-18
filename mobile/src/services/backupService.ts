@@ -1,4 +1,4 @@
-import { Share } from 'react-native';
+import { Share, NativeModules, Platform } from 'react-native';
 import { DatabaseManager } from '../database/sqlite/DatabaseManager';
 import { DataEvents } from '../database/sqlite/DataEvents';
 import { getUTCTimestamp } from '../utils/date';
@@ -115,13 +115,23 @@ export class BackupService {
       const jsonString = JSON.stringify(backup, null, 2);
       const filename = `SpendingBook_Backup_${new Date().toISOString().split('T')[0]}.json`;
 
+      if (Platform.OS === 'android' && NativeModules.FileShareModule?.shareFile) {
+        await NativeModules.FileShareModule.shareFile(
+          filename,
+          jsonString,
+          'application/json',
+          'Save Spending Book Backup to Google Drive / Files'
+        );
+        return true;
+      }
+
       await Share.share(
         {
           title: filename,
           message: jsonString,
         },
         {
-          dialogTitle: 'Save Spending Book Backup',
+          dialogTitle: 'Save Spending Book Backup to Google Drive / Files',
         }
       );
       return true;

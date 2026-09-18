@@ -21,6 +21,7 @@ class MainApplication : Application(), ReactApplication {
           val packages = PackageList(this).packages.toMutableList()
           packages.add(HotUpdatePackage())
           packages.add(ReminderNotificationPackage())
+          packages.add(FileSharePackage())
           return packages
         }
 

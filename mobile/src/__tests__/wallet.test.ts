@@ -354,6 +354,15 @@ describe('Wallet 1 & Multi-Wallet Isolation Feature', () => {
         amountCents: 0,
       })
     ).rejects.toThrow('Transfer amount must be greater than zero.');
+
+    // Validation: cannot transfer more than available balance (overdraft check)
+    await expect(
+      transferBetweenWalletsUseCase({
+        fromWalletId: wallet1.id,
+        toWalletId: wallet2.id,
+        amountCents: 9999999,
+      })
+    ).rejects.toThrow('Insufficient balance');
   });
 });
 

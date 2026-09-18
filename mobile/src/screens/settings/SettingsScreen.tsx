@@ -491,17 +491,17 @@ export const SettingsScreen: React.FC = () => {
         )}
       </Card>
 
-      {/* Data Backup & Restore Card */}
+      {/* Google Drive & Cloud Backup Card */}
       <Card style={styles.card}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-          Data Backup & Restore
+          Google Drive & Cloud Backup
         </Text>
         <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted, marginBottom: 12 }]}>
-          Export an offline JSON copy of all transactions, wallets, and categories, or restore an earlier backup safely.
+          Save a complete backup of all transactions, wallets, and categories directly to Google Drive or phone storage, and restore anytime.
         </Text>
         <View style={styles.backupButtonRow}>
           <Button
-            label={isExportingBackup ? 'Exporting...' : '📦 Export Backup'}
+            label={isExportingBackup ? 'Backing up...' : '☁️ Backup to Google Drive / Files'}
             variant="outline"
             size="sm"
             isLoading={isExportingBackup}
@@ -509,7 +509,7 @@ export const SettingsScreen: React.FC = () => {
             style={{ flex: 1 }}
           />
           <Button
-            label="📥 Restore Backup"
+            label="📥 Restore from Backup"
             variant="primary"
             size="sm"
             onPress={() => setShowRestoreModal(true)}

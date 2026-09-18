@@ -198,6 +198,13 @@ export const QuickExpenseScreen: React.FC = () => {
           setIsSaving(false);
           return;
         }
+        const fromWallet = wallets.find((w) => w.id === fromId);
+        if (fromWallet && (fromWallet.balanceCents || 0) < cents) {
+          const avail = ((fromWallet.balanceCents || 0) / 100).toFixed(2);
+          setError(`Insufficient balance in ${fromWallet.name}. Available: ${user?.baseCurrency || 'INR'} ${avail}`);
+          setIsSaving(false);
+          return;
+        }
         await transferBetweenWalletsUseCase({
           fromWalletId: fromId,
           toWalletId,
@@ -746,6 +753,13 @@ export const QuickExpenseScreen: React.FC = () => {
           />
         </View>
       </View>
+
+      {/* Error Message Banner */}
+      {error && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
 
       {/* Save Action Button */}
       <View style={styles.actionsContainer}>
@@ -1485,5 +1499,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  errorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  errorBannerText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

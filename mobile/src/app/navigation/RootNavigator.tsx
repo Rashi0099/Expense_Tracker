@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Linking } from 'react-native';
+import { Linking } from 'react-native';
 import {
   NavigationContainer,
   useNavigationContainerRef,
@@ -14,7 +14,7 @@ import { CategoriesScreen } from '../../screens/categories/CategoriesScreen';
 import { RecurringExpensesScreen } from '../../screens/recurring/RecurringExpensesScreen';
 import { WalletsScreen } from '../../screens/wallets/WalletsScreen';
 import { useAuth } from '../providers/AuthProvider';
-import { LoadingState } from '../../components/common/LoadingState';
+import { FastSplashScreen } from '../../components/common/FastSplashScreen';
 import { useTheme } from '../../theme/useTheme';
 import { APP_LOGO } from '../../assets/appLogo';
 
@@ -74,19 +74,7 @@ export const RootNavigator: React.FC = () => {
   }, [isAuthenticated, pendingDeepLink, consumePendingDeepLink, navigationRef]);
 
   if (isLoading) {
-    return (
-      <View style={[styles.loading, { backgroundColor: theme.colors.background }]}>
-        <Image
-          source={APP_LOGO}
-          style={styles.splashLogo}
-          resizeMode="contain"
-        />
-        <Text style={[styles.splashTitle, { color: theme.colors.textPrimary }]}>
-          Spending Book
-        </Text>
-        <LoadingState message="Initializing your financial space..." />
-      </View>
-    );
+    return <FastSplashScreen />;
   }
 
   return (
@@ -163,23 +151,3 @@ export const RootNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  splashLogo: {
-    width: 90,
-    height: 90,
-    marginBottom: 14,
-  },
-  splashTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 16,
-    letterSpacing: 0.5,
-  },
-});

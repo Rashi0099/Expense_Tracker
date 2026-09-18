@@ -1,4 +1,4 @@
-import { Share, Alert } from 'react-native';
+import { Share, Alert, NativeModules, Platform } from 'react-native';
 import { ExpenseModel, IncomeModel } from '../domain/models';
 import { formatDisplayDate } from './date';
 
@@ -148,12 +148,27 @@ export function generateFinancialStatement(
 }
 
 /**
- * Shares export content via Native Share Sheet (WhatsApp, Email, Drive, Files)
+ * Shares export content as an authentic file attachment (.csv, .txt, .html)
+ * via Native FileProvider so WhatsApp, Google Drive, and Gmail receive actual files.
  */
-export async function shareExportContent(title: string, content: string): Promise<boolean> {
+export async function shareExportContent(
+  fileName: string,
+  content: string,
+  mimeType: string = 'text/csv'
+): Promise<boolean> {
   try {
+    if (Platform.OS === 'android' && NativeModules.FileShareModule?.shareFile) {
+      await NativeModules.FileShareModule.shareFile(
+        fileName,
+        content,
+        mimeType,
+        `Share ${fileName}`
+      );
+      return true;
+    }
+
     const result = await Share.share({
-      title,
+      title: fileName,
       message: content,
     });
     return result.action === Share.sharedAction;

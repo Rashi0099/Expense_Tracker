@@ -448,7 +448,7 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
       }
       const csv = generateCSV(items);
       setIsExportModalOpen(false);
-      await shareExportContent(`spending_book_export_${getTodayDateString()}.csv`, csv);
+      await shareExportContent(`spending_book_export_${getTodayDateString()}.csv`, csv, 'text/csv');
     } catch (err: any) {
       Alert.alert('Export Failed', err?.message || 'Could not export data.');
     } finally {
@@ -466,7 +466,7 @@ function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDa
       }
       const statement = generateFinancialStatement(items, currency);
       setIsExportModalOpen(false);
-      await shareExportContent(`spending_book_statement_${getTodayDateString()}.txt`, statement);
+      await shareExportContent(`spending_book_statement_${getTodayDateString()}.txt`, statement, 'text/plain');
     } catch (err: any) {
       Alert.alert('Export Failed', err?.message || 'Could not generate statement.');
     } finally {
