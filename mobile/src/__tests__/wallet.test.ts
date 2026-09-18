@@ -12,6 +12,7 @@ import {
   ensureDefaultWalletUseCase,
   getWalletBalanceUseCase,
   canDeleteWalletUseCase,
+  transferBetweenWalletsUseCase,
 } from '../domain/usecases/walletUseCases';
 import { getSixMonthTrendUseCase } from '../domain/usecases/dashboardUseCases';
 import { DataEvents } from '../database/sqlite/DataEvents';
@@ -253,14 +254,13 @@ describe('Wallet 1 & Multi-Wallet Isolation Feature', () => {
 
     // Add income and expense to defaultWallet in current month
     await incRepo.create({
-      userId: TEST_USER,
+      categoryId: 'cat_income_salary',
       amountCents: 50000,
       transactionDate: curDate,
       source: 'Salary',
       walletId: defaultWallet.id,
     });
     await expRepo.create({
-      userId: TEST_USER,
       amountCents: 15000,
       transactionDate: curDate,
       categoryId: 'cat_food',
@@ -269,7 +269,7 @@ describe('Wallet 1 & Multi-Wallet Isolation Feature', () => {
 
     // Add income to wallet2
     await incRepo.create({
-      userId: TEST_USER,
+      categoryId: 'cat_income_freelance',
       amountCents: 80000,
       transactionDate: curDate,
       source: 'Freelance',
@@ -295,4 +295,66 @@ describe('Wallet 1 & Multi-Wallet Isolation Feature', () => {
     expect(w2CurMonth.incomeCents).toBe(80000);
     expect(w2CurMonth.expenseCents).toBe(0);
   });
+
+  it('transfers funds atomically between wallets updating balances', async () => {
+    const wallet1 = await ensureDefaultWalletUseCase(TEST_USER);
+    const wallet2 = await createWalletUseCase('Savings Bank');
+
+    const incRepo = new SQLiteIncomeRepository();
+    const curDate = new Date().toISOString().split('T')[0];
+
+    // Seed Wallet 1 with 50,000 cents ($500)
+    await incRepo.create({
+      categoryId: 'c0000000-0000-0000-0000-000000000007',
+      amountCents: 50000,
+      transactionDate: curDate,
+      source: 'Initial Deposit',
+      walletId: wallet1.id,
+    });
+
+    const b1Initial = await getWalletBalanceUseCase(wallet1.id);
+    const b2Initial = await getWalletBalanceUseCase(wallet2.id);
+    expect(b1Initial).toBe(50000);
+    expect(b2Initial).toBe(0);
+
+    // Transfer 20,000 cents ($200) from Wallet 1 to Savings Bank
+    const transferRes = await transferBetweenWalletsUseCase({
+      fromWalletId: wallet1.id,
+      toWalletId: wallet2.id,
+      amountCents: 20000,
+      note: 'Emergency savings allocation',
+    });
+
+    expect(transferRes.amountCents).toBe(20000);
+    expect(transferRes.expenseId).toBeDefined();
+    expect(transferRes.incomeId).toBeDefined();
+
+    // Verify updated balances
+    const b1After = await getWalletBalanceUseCase(wallet1.id);
+    const b2After = await getWalletBalanceUseCase(wallet2.id);
+    expect(b1After).toBe(30000); // 50000 - 20000
+    expect(b2After).toBe(20000); // 0 + 20000
+
+    // Net sum across all wallets is preserved
+    expect(b1After + b2After).toBe(50000);
+
+    // Validation: cannot transfer to the same wallet
+    await expect(
+      transferBetweenWalletsUseCase({
+        fromWalletId: wallet1.id,
+        toWalletId: wallet1.id,
+        amountCents: 5000,
+      })
+    ).rejects.toThrow('Source and destination wallets must be different.');
+
+    // Validation: amount must be > 0
+    await expect(
+      transferBetweenWalletsUseCase({
+        fromWalletId: wallet1.id,
+        toWalletId: wallet2.id,
+        amountCents: 0,
+      })
+    ).rejects.toThrow('Transfer amount must be greater than zero.');
+  });
 });
+

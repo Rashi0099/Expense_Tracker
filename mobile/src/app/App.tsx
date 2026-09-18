@@ -6,6 +6,7 @@ import { WalletProvider } from './providers/WalletProvider';
 import { BalanceVisibilityProvider } from './providers/BalanceVisibilityProvider';
 import { RootNavigator } from './navigation/RootNavigator';
 import { ScreenPrivacyShield } from '../components/common/ScreenPrivacyShield';
+import { SecurityLockOverlay } from '../components/common/SecurityLockOverlay';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { hotUpdateService } from '../services/HotUpdateService';
 import { reminderService } from '../services/reminderService';
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
               </WalletProvider>
             </AuthProvider>
           </ScreenPrivacyShield>
+          <SecurityLockOverlay />
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

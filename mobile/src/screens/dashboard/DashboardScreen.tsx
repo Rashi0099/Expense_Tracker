@@ -486,25 +486,49 @@ export const DashboardScreen: React.FC = () => {
             })}
           </ScrollView>
 
-          {/* Add / Manage Wallet Button */}
-          <TouchableOpacity
-            style={[
-              styles.manageWalletsBtn,
-              {
-                backgroundColor: theme.colors.surfaceSubtle,
-                borderColor: theme.colors.surfaceBorder,
-              },
-            ]}
-            onPress={() => {
-              setShowWalletModal(false);
-              navigation.navigate('Wallets');
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.manageWalletsBtnText, { color: theme.colors.primary }]}>
-              ⚙️ Add / Manage Wallet
-            </Text>
-          </TouchableOpacity>
+          {/* Transfer Funds & Manage Wallet Buttons */}
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+            {wallets.length >= 2 && (
+              <TouchableOpacity
+                style={[
+                  styles.manageWalletsBtn,
+                  {
+                    flex: 1,
+                    backgroundColor: theme.colors.surfaceSubtle,
+                    borderColor: theme.colors.surfaceBorder,
+                  },
+                ]}
+                onPress={() => {
+                  setShowWalletModal(false);
+                  navigation.navigate('QuickExpense', { tab: 'TRANSFER' });
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.manageWalletsBtnText, { color: '#6366F1' }]}>
+                  🔄 Transfer
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.manageWalletsBtn,
+                {
+                  flex: 1,
+                  backgroundColor: theme.colors.surfaceSubtle,
+                  borderColor: theme.colors.surfaceBorder,
+                },
+              ]}
+              onPress={() => {
+                setShowWalletModal(false);
+                navigation.navigate('Wallets');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.manageWalletsBtnText, { color: theme.colors.primary }]}>
+                ⚙️ Manage
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </BottomSheet>
     </Screen>

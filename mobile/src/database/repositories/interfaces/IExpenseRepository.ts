@@ -7,6 +7,8 @@ export interface ExpenseFilters {
   endDate?: string;
   paymentMethod?: PaymentMethod;
   search?: string;
+  minAmountCents?: number;
+  maxAmountCents?: number;
   limit?: number;
   offset?: number;
 }

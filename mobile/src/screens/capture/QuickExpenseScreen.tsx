@@ -10,12 +10,13 @@ import {
   TextInput as RNTextInput,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
 import { Button } from '../../components/common/Button';
 import { createExpenseUseCase } from '../../domain/usecases/expenseUseCases';
 import { createIncomeUseCase } from '../../domain/usecases/incomeUseCases';
 import { listCategoriesUseCase } from '../../domain/usecases/categoryUseCases';
+import { transferBetweenWalletsUseCase } from '../../domain/usecases/walletUseCases';
 import { suggestCategoryAsync } from '../../domain/rules/smartCategorySuggestion';
 import { SQLiteCategoryMemoryRepository } from '../../database/repositories/SQLiteCategoryMemoryRepository';
 import { CategoryModel, PaymentMethod } from '../../domain/models';
@@ -24,6 +25,8 @@ import { getTodayDateString, formatDisplayDate } from '../../utils/date';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { useTheme } from '../../theme/useTheme';
 import { useWallet } from '../../app/providers/WalletProvider';
+import { useBalanceVisibility } from '../../app/providers/BalanceVisibilityProvider';
+import { CurrencyText } from '../../components/common/CurrencyText';
 import { IconWallet } from '../../components/common/NavIcons';
 import { BottomSheet } from '../../components/common/BottomSheet';
 
@@ -36,16 +39,26 @@ const QUICK_PAYMENT_METHODS: { label: string; value: PaymentMethod }[] = [
 
 export const QuickExpenseScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { user } = useAuth();
   const { theme, isDark } = useTheme();
   const { activeWallet, activeWalletId, wallets } = useWallet();
+  const { isBalanceHidden } = useBalanceVisibility();
   const amountInputRef = useRef<RNTextInput>(null);
 
   const memoryRepo = useMemo(() => new SQLiteCategoryMemoryRepository(), []);
 
-  const [transactionType, setTransactionType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+  const initialTab =
+    route.params?.tab === 'TRANSFER'
+      ? 'TRANSFER'
+      : route.params?.tab === 'INCOME'
+      ? 'INCOME'
+      : 'EXPENSE';
+  const [transactionType, setTransactionType] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>(initialTab);
   const [selectedWalletId, setSelectedWalletId] = useState<string>(activeWalletId || '');
+  const [toWalletId, setToWalletId] = useState<string>('');
   const [showWalletPicker, setShowWalletPicker] = useState(false);
+  const [showToWalletPicker, setShowToWalletPicker] = useState(false);
   const [amount, setAmount] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [categories, setCategories] = useState<CategoryModel[]>([]);
@@ -61,9 +74,32 @@ export const QuickExpenseScreen: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerTempDate, setPickerTempDate] = useState<Date>(new Date());
 
+  // Keep selected tab in sync if route parameter changes
+  useEffect(() => {
+    if (route.params?.tab) {
+      setTransactionType(route.params.tab);
+    }
+  }, [route.params?.tab]);
+
+  // Initialize destination wallet to first different wallet
+  useEffect(() => {
+    if (wallets.length > 1 && !toWalletId) {
+      const sourceId = selectedWalletId || activeWalletId || wallets[0].id;
+      const other = wallets.find((w) => w.id !== sourceId);
+      if (other) {
+        setToWalletId(other.id);
+      }
+    }
+  }, [wallets, selectedWalletId, activeWalletId, toWalletId]);
+
   // Load available categories from local SQLite based on transactionType
   useEffect(() => {
     async function loadCategories() {
+      if (transactionType === 'TRANSFER') {
+        setCategories([]);
+        setSelectedCategoryId('');
+        return;
+      }
       try {
         const list = await listCategoriesUseCase(transactionType);
         setCategories(list);
@@ -134,7 +170,7 @@ export const QuickExpenseScreen: React.FC = () => {
       setError('Please enter a valid amount greater than zero.');
       return null;
     }
-    if (!selectedCategoryId) {
+    if (transactionType !== 'TRANSFER' && !selectedCategoryId) {
       setError(`Please select ${transactionType === 'EXPENSE' ? 'an expense' : 'an income'} category.`);
       return null;
     }
@@ -150,32 +186,53 @@ export const QuickExpenseScreen: React.FC = () => {
     setError(null);
 
     try {
-      const targetWalletId = selectedWalletId || activeWalletId || undefined;
-      if (transactionType === 'INCOME') {
-        await createIncomeUseCase({
-          categoryId: selectedCategoryId,
-          walletId: targetWalletId,
+      if (transactionType === 'TRANSFER') {
+        const fromId = selectedWalletId || activeWalletId || (wallets.length > 0 ? wallets[0].id : '');
+        if (!fromId || !toWalletId) {
+          setError('Please select both source and destination wallets.');
+          setIsSaving(false);
+          return;
+        }
+        if (fromId === toWalletId) {
+          setError('Source and destination wallets must be different.');
+          setIsSaving(false);
+          return;
+        }
+        await transferBetweenWalletsUseCase({
+          fromWalletId: fromId,
+          toWalletId,
           amountCents: cents,
-          currency: user?.baseCurrency || 'INR',
           transactionDate: selectedDate,
-          source: payee.trim() || 'Income',
-          note: note.trim() || undefined,
+          note: (note || payee).trim() || undefined,
         });
       } else {
-        await createExpenseUseCase({
-          categoryId: selectedCategoryId,
-          walletId: targetWalletId,
-          amountCents: cents,
-          currency: user?.baseCurrency || 'INR',
-          transactionDate: selectedDate,
-          paymentMethod,
-          payee: payee.trim() || undefined,
-          note: note.trim() || undefined,
-        });
+        const targetWalletId = selectedWalletId || activeWalletId || undefined;
+        if (transactionType === 'INCOME') {
+          await createIncomeUseCase({
+            categoryId: selectedCategoryId,
+            walletId: targetWalletId,
+            amountCents: cents,
+            currency: user?.baseCurrency || 'INR',
+            transactionDate: selectedDate,
+            source: payee.trim() || 'Income',
+            note: note.trim() || undefined,
+          });
+        } else {
+          await createExpenseUseCase({
+            categoryId: selectedCategoryId,
+            walletId: targetWalletId,
+            amountCents: cents,
+            currency: user?.baseCurrency || 'INR',
+            transactionDate: selectedDate,
+            paymentMethod,
+            payee: payee.trim() || undefined,
+            note: note.trim() || undefined,
+          });
 
-        // Update learned category memory for fast future capture
-        if (payee.trim() && user?.id) {
-          await memoryRepo.recordChoice(user.id, payee.trim(), selectedCategoryId);
+          // Update learned category memory for fast future capture
+          if (payee.trim() && user?.id) {
+            await memoryRepo.recordChoice(user.id, payee.trim(), selectedCategoryId);
+          }
         }
       }
 
@@ -184,7 +241,7 @@ export const QuickExpenseScreen: React.FC = () => {
       setNote('');
       navigation.navigate('Home');
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Could not save transaction locally.');
+      Alert.alert('Error', err?.message || 'Could not complete transaction.');
     } finally {
       setIsSaving(false);
     }
@@ -218,12 +275,16 @@ export const QuickExpenseScreen: React.FC = () => {
           <Text style={[styles.backArrow, { color: theme.colors.textPrimary }]}>‹</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-          {transactionType === 'EXPENSE' ? 'Add Expense' : 'Add Income'}
+          {transactionType === 'TRANSFER'
+            ? 'Transfer Funds'
+            : transactionType === 'EXPENSE'
+            ? 'Add Expense'
+            : 'Add Income'}
         </Text>
         <View style={styles.headerRightPlaceholder} />
       </View>
 
-      {/* Segmented Pill Toggle: [ Expense ]  [ Income ] */}
+      {/* Segmented Pill Toggle: [ Expense ]  [ Income ]  [ Transfer ] */}
       <View style={[styles.toggleContainer, { backgroundColor: theme.colors.surfaceSubtle }]}>
         <TouchableOpacity
           onPress={() => setTransactionType('EXPENSE')}
@@ -266,10 +327,31 @@ export const QuickExpenseScreen: React.FC = () => {
             Income
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setTransactionType('TRANSFER')}
+          activeOpacity={0.8}
+          style={[
+            styles.toggleBtn,
+            transactionType === 'TRANSFER' && (isDark ? styles.toggleBtnTransferActiveDark : styles.toggleBtnTransferActive),
+          ]}
+        >
+          <Text
+            style={[
+              styles.toggleText,
+              {
+                color: transactionType === 'TRANSFER' ? '#6366F1' : theme.colors.textSecondary,
+                fontWeight: transactionType === 'TRANSFER' ? '700' : '500',
+              },
+            ]}
+          >
+            Transfer
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Wallet Switcher Pill */}
-      {wallets.length > 0 && (
+      {/* Standard Wallet Switcher Pill for Expense/Income */}
+      {transactionType !== 'TRANSFER' && wallets.length > 0 && (
         <View style={styles.walletPillRow}>
           <TouchableOpacity
             style={[
@@ -290,6 +372,134 @@ export const QuickExpenseScreen: React.FC = () => {
             </Text>
             <Text style={[styles.walletPillChevron, { color: theme.colors.textMuted }]}>▾</Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Inter-Wallet Transfer Cards: From -> To */}
+      {transactionType === 'TRANSFER' && (
+        <View style={styles.transferSection}>
+          {wallets.length < 2 ? (
+            <View
+              style={[
+                styles.transferWarningBox,
+                {
+                  backgroundColor: isDark ? '#1E293B' : '#FEF3C7',
+                  borderColor: isDark ? '#334155' : '#FDE68A',
+                },
+              ]}
+            >
+              <Text style={[styles.transferWarningText, { color: isDark ? '#F8FAFC' : '#92400E' }]}>
+                ⚠️ You need at least 2 wallets to transfer funds.
+              </Text>
+              <TouchableOpacity
+                style={[styles.createWalletCta, { backgroundColor: theme.colors.primary }]}
+                onPress={() => navigation.navigate('Wallets')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.createWalletCtaText}>+ Create New Wallet</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.transferCard,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.surfaceBorder,
+                },
+              ]}
+            >
+              {/* From Wallet Row */}
+              <TouchableOpacity
+                style={styles.transferWalletRow}
+                onPress={() => setShowWalletPicker(true)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.transferWalletIconBox, { backgroundColor: isDark ? '#312E81' : '#EEF2FF' }]}>
+                  <Text style={styles.transferWalletEmoji}>👛</Text>
+                </View>
+                <View style={styles.transferWalletInfo}>
+                  <Text style={[styles.transferWalletLabel, { color: theme.colors.textMuted }]}>
+                    From (Source)
+                  </Text>
+                  <Text style={[styles.transferWalletName, { color: theme.colors.textPrimary }]}>
+                    {wallets.find((w) => w.id === (selectedWalletId || activeWalletId))?.name || 'Select Wallet'}
+                  </Text>
+                </View>
+                <View style={styles.transferWalletRight}>
+                  <Text style={[styles.transferWalletBalance, { color: theme.colors.textSecondary }]}>
+                    {isBalanceHidden ? (
+                      '••••'
+                    ) : (
+                      <CurrencyText
+                        amountCents={
+                          wallets.find((w) => w.id === (selectedWalletId || activeWalletId))?.balanceCents || 0
+                        }
+                        currency={user?.baseCurrency || 'INR'}
+                      />
+                    )}
+                  </Text>
+                  <Text style={[styles.transferChevron, { color: theme.colors.textMuted }]}>▾</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Swap Button Divider */}
+              <View style={[styles.transferDivider, { backgroundColor: theme.colors.surfaceBorder }]}>
+                <TouchableOpacity
+                  style={[
+                    styles.transferSwapBtn,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.surfaceBorder,
+                    },
+                  ]}
+                  onPress={() => {
+                    const currentFrom = selectedWalletId || activeWalletId || (wallets[0]?.id || '');
+                    const currentTo = toWalletId || (wallets.find((w) => w.id !== currentFrom)?.id || '');
+                    setSelectedWalletId(currentTo);
+                    setToWalletId(currentFrom);
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Swap from and to wallets"
+                >
+                  <Text style={[styles.transferSwapIcon, { color: '#6366F1' }]}>⇅</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* To Wallet Row */}
+              <TouchableOpacity
+                style={styles.transferWalletRow}
+                onPress={() => setShowToWalletPicker(true)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.transferWalletIconBox, { backgroundColor: isDark ? '#064E3B' : '#ECFDF5' }]}>
+                  <Text style={styles.transferWalletEmoji}>📥</Text>
+                </View>
+                <View style={styles.transferWalletInfo}>
+                  <Text style={[styles.transferWalletLabel, { color: theme.colors.textMuted }]}>
+                    To (Destination)
+                  </Text>
+                  <Text style={[styles.transferWalletName, { color: theme.colors.textPrimary }]}>
+                    {wallets.find((w) => w.id === toWalletId)?.name || 'Select Destination'}
+                  </Text>
+                </View>
+                <View style={styles.transferWalletRight}>
+                  <Text style={[styles.transferWalletBalance, { color: theme.colors.textSecondary }]}>
+                    {isBalanceHidden ? (
+                      '••••'
+                    ) : (
+                      <CurrencyText
+                        amountCents={wallets.find((w) => w.id === toWalletId)?.balanceCents || 0}
+                        currency={user?.baseCurrency || 'INR'}
+                      />
+                    )}
+                  </Text>
+                  <Text style={[styles.transferChevron, { color: theme.colors.textMuted }]}>▾</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
 
@@ -365,81 +575,83 @@ export const QuickExpenseScreen: React.FC = () => {
         </TouchableOpacity>
       )}
 
-      {/* Category Grid Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-            Category
-          </Text>
-          <TouchableOpacity
-            onPress={() => setShowAllCategories((prev) => !prev)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.seeAllText, { color: theme.colors.textSecondary }]}>
-              {showAllCategories ? 'Show less' : 'Select category >'}
+      {/* Category Grid Section — only for Expense / Income */}
+      {transactionType !== 'TRANSFER' && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+              Category
             </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              onPress={() => setShowAllCategories((prev) => !prev)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.seeAllText, { color: theme.colors.textSecondary }]}>
+                {showAllCategories ? 'Show less' : 'Select category >'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.categoryGrid}>
-          {displayedCategories.map((cat, idx) => {
-            const isSelected = cat.id === selectedCategoryId;
-            const pastelBgs = [
-              '#FEF3C7', // Food
-              '#E0E7FF', // Transport
-              '#FCE7F3', // Shopping
-              '#D1FAE5', // Home
-              '#E0F2FE', // Bills
-              '#FEE2E2', // Health
-              '#EDE9FE', // Education
-              '#F3F4F6', // Others
-            ];
-            const tileBg = pastelBgs[idx % pastelBgs.length];
+          <View style={styles.categoryGrid}>
+            {displayedCategories.map((cat, idx) => {
+              const isSelected = cat.id === selectedCategoryId;
+              const pastelBgs = [
+                '#FEF3C7', // Food
+                '#E0E7FF', // Transport
+                '#FCE7F3', // Shopping
+                '#D1FAE5', // Home
+                '#E0F2FE', // Bills
+                '#FEE2E2', // Health
+                '#EDE9FE', // Education
+                '#F3F4F6', // Others
+              ];
+              const tileBg = pastelBgs[idx % pastelBgs.length];
 
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => {
-                  setSelectedCategoryId(cat.id);
-                  if (suggestedCategory?.id === cat.id) {
-                    setSuggestedCategory(null);
-                  }
-                }}
-                activeOpacity={0.7}
-                style={styles.categoryGridItem}
-                accessibilityRole="button"
-                accessibilityLabel={cat.name}
-                accessibilityState={{ selected: isSelected }}
-              >
-                <View
-                  style={[
-                    styles.categoryTile,
-                    {
-                      backgroundColor: tileBg,
-                      borderColor: isSelected ? theme.colors.primary : 'transparent',
-                      borderWidth: isSelected ? 2.5 : 0,
-                    },
-                  ]}
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => {
+                    setSelectedCategoryId(cat.id);
+                    if (suggestedCategory?.id === cat.id) {
+                      setSuggestedCategory(null);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  style={styles.categoryGridItem}
+                  accessibilityRole="button"
+                  accessibilityLabel={cat.name}
+                  accessibilityState={{ selected: isSelected }}
                 >
-                  <Text style={styles.categoryTileEmoji}>{cat.icon}</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.categoryTileLabel,
-                    {
-                      color: isSelected ? theme.colors.primary : theme.colors.textPrimary,
-                      fontWeight: isSelected ? '700' : '500',
-                    },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+                  <View
+                    style={[
+                      styles.categoryTile,
+                      {
+                        backgroundColor: tileBg,
+                        borderColor: isSelected ? theme.colors.primary : 'transparent',
+                        borderWidth: isSelected ? 2.5 : 0,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.categoryTileEmoji}>{cat.icon}</Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.categoryTileLabel,
+                      {
+                        color: isSelected ? theme.colors.primary : theme.colors.textPrimary,
+                        fontWeight: isSelected ? '700' : '500',
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Detail Selectors List (Date, Payment Method, Note) */}
       <View style={[styles.detailsListCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.surfaceBorder }]}>
@@ -507,18 +719,28 @@ export const QuickExpenseScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Note / Payee Row */}
+        {/* Note / Payee / Transfer Reason Row */}
         <View style={styles.detailRow}>
           <View style={styles.detailRowLeft}>
             <Text style={styles.detailRowIcon}>📝</Text>
             <Text style={[styles.detailRowLabel, { color: theme.colors.textPrimary }]}>
-              {transactionType === 'EXPENSE' ? 'Add Note' : 'Source'}
+              {transactionType === 'TRANSFER'
+                ? 'Transfer Note'
+                : transactionType === 'EXPENSE'
+                ? 'Add Note'
+                : 'Source'}
             </Text>
           </View>
           <RNTextInput
             value={payee}
             onChangeText={setPayee}
-            placeholder={transactionType === 'EXPENSE' ? 'Add a note (optional)' : 'e.g. Salary, Client'}
+            placeholder={
+              transactionType === 'TRANSFER'
+                ? 'Reason or memo (optional)'
+                : transactionType === 'EXPENSE'
+                ? 'Add a note (optional)'
+                : 'e.g. Salary, Client'
+            }
             placeholderTextColor={theme.colors.textMuted}
             style={[styles.noteInput, { color: theme.colors.textPrimary }]}
           />
@@ -534,14 +756,16 @@ export const QuickExpenseScreen: React.FC = () => {
           style={[
             styles.savePillButton,
             {
-              backgroundColor: theme.colors.primary,
-              shadowColor: theme.colors.primary,
+              backgroundColor: transactionType === 'TRANSFER' ? '#6366F1' : theme.colors.primary,
+              shadowColor: transactionType === 'TRANSFER' ? '#6366F1' : theme.colors.primary,
             },
           ]}
         >
           <Text style={styles.savePillButtonText}>
             {isSaving
-              ? 'Saving...'
+              ? 'Processing...'
+              : transactionType === 'TRANSFER'
+              ? 'Transfer Funds'
               : `Save ${transactionType === 'EXPENSE' ? 'Expense' : 'Income'}`}
           </Text>
         </TouchableOpacity>
@@ -738,6 +962,74 @@ export const QuickExpenseScreen: React.FC = () => {
           })}
         </View>
       </BottomSheet>
+
+      {/* Destination Wallet Selection BottomSheet */}
+      <BottomSheet
+        visible={showToWalletPicker}
+        onClose={() => setShowToWalletPicker(false)}
+        title="Select Destination Wallet"
+      >
+        <View style={{ paddingBottom: 24 }}>
+          {wallets.map((w) => {
+            const isSelected = toWalletId === w.id;
+            const isSource = (selectedWalletId || activeWalletId) === w.id;
+            return (
+              <TouchableOpacity
+                key={w.id}
+                style={[
+                  styles.walletPickerRow,
+                  isSelected && {
+                    backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+                    borderColor: isDark ? '#4F46E5' : '#C7D2FE',
+                  },
+                  isSource && { opacity: 0.45 },
+                ]}
+                onPress={() => {
+                  if (isSource) {
+                    Alert.alert('Invalid Selection', 'Destination wallet cannot be the same as source wallet.');
+                    return;
+                  }
+                  setToWalletId(w.id);
+                  setShowToWalletPicker(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '800',
+                      width: 20,
+                      textAlign: 'center',
+                      color: isSelected ? '#6366F1' : 'transparent',
+                    }}
+                  >
+                    ✓
+                  </Text>
+                  <View>
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: isSelected ? '700' : '500',
+                        color: theme.colors.textPrimary,
+                      }}
+                    >
+                      {w.name} {isSource ? '(Source)' : ''}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 13, color: theme.colors.textSecondary }}>
+                  {isBalanceHidden ? (
+                    '••••'
+                  ) : (
+                    <CurrencyText amountCents={w.balanceCents || 0} currency={user?.baseCurrency || 'INR'} />
+                  )}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
     </Screen>
   );
 };
@@ -824,6 +1116,107 @@ const styles = StyleSheet.create({
   },
   toggleBtnIncomeActive: {
     backgroundColor: '#E8F8F5',
+  },
+  toggleBtnTransferActive: {
+    backgroundColor: '#EEF2FF',
+  },
+  toggleBtnTransferActiveDark: {
+    backgroundColor: 'rgba(99, 102, 241, 0.25)',
+  },
+  transferSection: {
+    marginBottom: 20,
+  },
+  transferWarningBox: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 12,
+  },
+  transferWarningText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  createWalletCta: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  createWalletCtaText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  transferCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 4,
+  },
+  transferWalletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  transferWalletIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  transferWalletEmoji: {
+    fontSize: 18,
+  },
+  transferWalletInfo: {
+    flex: 1,
+  },
+  transferWalletLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  transferWalletName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  transferWalletRight: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  transferWalletBalance: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  transferChevron: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  transferDivider: {
+    height: 1,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  transferSwapBtn: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  transferSwapIcon: {
+    fontSize: 16,
+    fontWeight: '800',
   },
   toggleText: {
     fontSize: 14,

@@ -19,6 +19,8 @@ export const DEFAULT_SYSTEM_CATEGORIES = [
   { id: 'c0000000-0000-0000-0000-000000000007', name: 'Salary', type: 'INCOME', icon: '💼', color: '#059669' },
   { id: 'c0000000-0000-0000-0000-000000000008', name: 'Investments', type: 'INCOME', icon: '📈', color: '#0284C7' },
   { id: 'c0000000-0000-0000-0000-000000000009', name: 'Freelance', type: 'INCOME', icon: '💻', color: '#6366F1' },
+  { id: 'c0000000-0000-0000-0000-000000000010', name: 'Transfer', type: 'EXPENSE', icon: '🔄', color: '#6366F1' },
+  { id: 'c0000000-0000-0000-0000-000000000011', name: 'Transfer', type: 'INCOME', icon: '🔄', color: '#6366F1' },
 ];
 
 export class SQLiteCategoryRepository implements ICategoryRepository {

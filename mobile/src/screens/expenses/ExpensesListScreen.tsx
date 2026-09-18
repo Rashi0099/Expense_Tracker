@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
   RefreshControl,
+  TextInput as RNTextInput,
+  Modal,
 } from 'react-native';
 import { Screen } from '../../components/common/Screen';
 import { TextInput } from '../../components/forms/TextInput';
@@ -23,13 +25,21 @@ import { listCategoriesUseCase } from '../../domain/usecases/categoryUseCases';
 import { ExpenseEditModal } from './components/ExpenseEditModal';
 import { IncomeEditModal } from './components/IncomeEditModal';
 import { useTheme } from '../../theme/useTheme';
-import { formatDisplayDate } from '../../utils/date';
+import { useWallet } from '../../app/providers/WalletProvider';
+import { useAuth } from '../../app/providers/AuthProvider';
+import { formatDisplayDate, getTodayDateString } from '../../utils/date';
 import {
   groupExpensesByDate,
   groupIncomesByDate,
   ExpenseDateGroup,
   IncomeDateGroup,
 } from '../../utils/dateGrouping';
+import {
+  normalizeTransactionsForExport,
+  generateCSV,
+  generateFinancialStatement,
+  shareExportContent,
+} from '../../utils/exportUtils';
 import { DataEvents } from '../../database/sqlite/DataEvents';
 import { PAYMENT_METHODS } from '../../app/config/constants';
 import { useSync } from '../../sync/hooks/useSync';
@@ -38,6 +48,7 @@ import { IconFilter } from '../../components/common/NavIcons';
 import { useRoute } from '@react-navigation/native';
 
 export type TransactionTab = 'INCOME' | 'EXPENSE';
+export type DatePreset = 'ALL' | 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_MONTH';
 
 const PAGE_SIZE = 25;
 
@@ -45,6 +56,9 @@ export const ExpensesListScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { syncNow } = useSync();
   const { isOffline } = useNetworkState();
+  const { wallets } = useWallet();
+  const { user } = useAuth();
+  const currency = user?.baseCurrency || 'INR';
   const route = useRoute<any>();
 
   const initialTab: TransactionTab = route.params?.tab === 'INCOME' ? 'INCOME' : 'EXPENSE';
@@ -53,12 +67,22 @@ export const ExpensesListScreen: React.FC = () => {
   const [expenses, setExpenses] = useState<ExpenseModel[]>([]);
   const [incomes, setIncomes] = useState<IncomeModel[]>([]);
   const [categories, setCategories] = useState<CategoryModel[]>([]);
+
+  // Advanced Filters State
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const [datePreset, setDatePreset] = useState<DatePreset>('ALL');
+  const [minAmount, setMinAmount] = useState<string>('');
+  const [maxAmount, setMaxAmount] = useState<string>('');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Export Modal State
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
@@ -99,16 +123,60 @@ export const ExpensesListScreen: React.FC = () => {
     loadCats();
   }, [selectedTab]);
 
+function getDateRangeFromPreset(preset: DatePreset): { startDate?: string; endDate?: string } {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  if (preset === 'TODAY') {
+    return { startDate: todayStr, endDate: todayStr };
+  }
+  if (preset === 'THIS_WEEK') {
+    const dayOfWeek = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayOfWeek);
+    const startY = startOfWeek.getFullYear();
+    const startM = String(startOfWeek.getMonth() + 1).padStart(2, '0');
+    const startD = String(startOfWeek.getDate()).padStart(2, '0');
+    return { startDate: `${startY}-${startM}-${startD}`, endDate: todayStr };
+  }
+  if (preset === 'THIS_MONTH') {
+    return { startDate: `${yyyy}-${mm}-01`, endDate: todayStr };
+  }
+  if (preset === 'LAST_MONTH') {
+    const lastMonthDate = new Date(yyyy, now.getMonth() - 1, 1);
+    const lmY = lastMonthDate.getFullYear();
+    const lmM = String(lastMonthDate.getMonth() + 1).padStart(2, '0');
+    const lastDayOfLastMonth = new Date(yyyy, now.getMonth(), 0).getDate();
+    return {
+      startDate: `${lmY}-${lmM}-01`,
+      endDate: `${lmY}-${lmM}-${String(lastDayOfLastMonth).padStart(2, '0')}`,
+    };
+  }
+  return {};
+}
+
   // Fetch paginated expenses from local SQLite
   const loadExpenses = useCallback(
     async (reset = false) => {
       setIsLoading(true);
       try {
+        const dateRange = getDateRangeFromPreset(datePreset);
+        const minCents = minAmount.trim() ? Math.round(parseFloat(minAmount) * 100) : undefined;
+        const maxCents = maxAmount.trim() ? Math.round(parseFloat(maxAmount) * 100) : undefined;
+
         const currentOffset = reset ? 0 : offsetRef.current;
         const list = await listExpensesUseCase({
           search: debouncedSearch.trim() || undefined,
           categoryId: selectedCategory || undefined,
+          walletId: selectedWalletId || undefined,
           paymentMethod: selectedPaymentMethod || undefined,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          minAmountCents: minCents,
+          maxAmountCents: maxCents,
           limit: PAGE_SIZE,
           offset: currentOffset,
         });
@@ -130,17 +198,34 @@ export const ExpensesListScreen: React.FC = () => {
         setIsLoading(false);
       }
     },
-    [debouncedSearch, selectedCategory, selectedPaymentMethod]
+    [
+      debouncedSearch,
+      selectedCategory,
+      selectedPaymentMethod,
+      selectedWalletId,
+      datePreset,
+      minAmount,
+      maxAmount,
+    ]
   );
 
   // Fetch incomes from local SQLite with category and payment method filters
   const loadIncomes = useCallback(async () => {
     setIsLoading(true);
     try {
+      const dateRange = getDateRangeFromPreset(datePreset);
+      const minCents = minAmount.trim() ? Math.round(parseFloat(minAmount) * 100) : undefined;
+      const maxCents = maxAmount.trim() ? Math.round(parseFloat(maxAmount) * 100) : undefined;
+
       const list = await listIncomeUseCase({
         search: debouncedSearch.trim() || undefined,
         categoryId: selectedCategory || undefined,
+        walletId: selectedWalletId || undefined,
         paymentMethod: selectedPaymentMethod || undefined,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        minAmountCents: minCents,
+        maxAmountCents: maxCents,
       });
       setIncomes(list);
     } catch {
@@ -148,7 +233,15 @@ export const ExpensesListScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, selectedCategory, selectedPaymentMethod]);
+  }, [
+    debouncedSearch,
+    selectedCategory,
+    selectedPaymentMethod,
+    selectedWalletId,
+    datePreset,
+    minAmount,
+    maxAmount,
+  ]);
 
   // Reload when filters or search change
   useEffect(() => {
@@ -157,7 +250,18 @@ export const ExpensesListScreen: React.FC = () => {
     } else {
       loadIncomes();
     }
-  }, [selectedTab, debouncedSearch, selectedCategory, selectedPaymentMethod, loadExpenses, loadIncomes]);
+  }, [
+    selectedTab,
+    debouncedSearch,
+    selectedCategory,
+    selectedPaymentMethod,
+    selectedWalletId,
+    datePreset,
+    minAmount,
+    maxAmount,
+    loadExpenses,
+    loadIncomes,
+  ]);
 
   // Reactive subscription: auto-refresh on SQLite change events
   useEffect(() => {
@@ -289,7 +393,48 @@ export const ExpensesListScreen: React.FC = () => {
   const handleClearAllFilters = () => {
     setSelectedCategory(null);
     setSelectedPaymentMethod(null);
+    setSelectedWalletId(null);
+    setDatePreset('ALL');
+    setMinAmount('');
+    setMaxAmount('');
     setSearch('');
+  };
+
+  // Export handlers
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const items = normalizeTransactionsForExport(expenses, incomes);
+      if (items.length === 0) {
+        Alert.alert('No Records', 'There are no transactions to export with the current filters.');
+        return;
+      }
+      const csv = generateCSV(items);
+      setIsExportModalOpen(false);
+      await shareExportContent(`spending_book_export_${getTodayDateString()}.csv`, csv);
+    } catch (err: any) {
+      Alert.alert('Export Failed', err?.message || 'Could not export data.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportStatement = async () => {
+    setIsExporting(true);
+    try {
+      const items = normalizeTransactionsForExport(expenses, incomes);
+      if (items.length === 0) {
+        Alert.alert('No Records', 'There are no transactions to export with the current filters.');
+        return;
+      }
+      const statement = generateFinancialStatement(items, currency);
+      setIsExportModalOpen(false);
+      await shareExportContent(`spending_book_statement_${getTodayDateString()}.txt`, statement);
+    } catch (err: any) {
+      Alert.alert('Export Failed', err?.message || 'Could not generate statement.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Group transactions into Today, Yesterday, and formatted date sections
@@ -301,11 +446,23 @@ export const ExpensesListScreen: React.FC = () => {
     return groupIncomesByDate(incomes);
   }, [incomes]);
 
-  const activeFiltersCount = (selectedCategory ? 1 : 0) + (selectedPaymentMethod ? 1 : 0);
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedWalletId) count++;
+    if (selectedCategory) count++;
+    if (selectedPaymentMethod) count++;
+    if (datePreset !== 'ALL') count++;
+    if (minAmount.trim() || maxAmount.trim()) count++;
+    return count;
+  }, [selectedWalletId, selectedCategory, selectedPaymentMethod, datePreset, minAmount, maxAmount]);
 
   const selectedCategoryModel = useMemo(() => {
     return categories.find((c) => c.id === selectedCategory);
   }, [categories, selectedCategory]);
+
+  const selectedWalletModel = useMemo(() => {
+    return wallets.find((w) => w.id === selectedWalletId);
+  }, [wallets, selectedWalletId]);
 
   return (
     <Screen style={styles.container}>
@@ -315,53 +472,84 @@ export const ExpensesListScreen: React.FC = () => {
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Transactions</Text>
           <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
             {selectedTab === 'EXPENSE'
-              ? `${expenses.length} transaction${expenses.length !== 1 ? 's' : ''} stored offline in SQLite`
-              : `${incomes.length} income stream${incomes.length !== 1 ? 's' : ''} stored offline in SQLite`}
+              ? `${expenses.length} transaction${expenses.length !== 1 ? 's' : ''} stored offline`
+              : `${incomes.length} income stream${incomes.length !== 1 ? 's' : ''} stored offline`}
           </Text>
         </View>
 
-        {/* Right Header Action: Unified Filter for both Expense and Income */}
-        <TouchableOpacity
-          onPress={() => setIsFilterSheetOpen(true)}
-          style={[
-            styles.filterButton,
-            {
-              backgroundColor: activeFiltersCount > 0 ? theme.colors.primary : theme.colors.surface,
-              borderColor: theme.colors.surfaceBorder,
-            },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={`Open filter sheet. ${activeFiltersCount} filters currently active.`}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <IconFilter
-              color={activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary}
-              size={13}
-            />
-            <Text
-              style={[
-                styles.filterButtonText,
-                { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
-              ]}
-            >
-              Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
+        {/* Right Header Actions: Export & Filter */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => setIsExportModalOpen(true)}
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.surfaceBorder,
+                paddingHorizontal: 10,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Export transactions report"
+          >
+            <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.textPrimary }}>
+              📤 Export
             </Text>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setIsFilterSheetOpen(true)}
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: activeFiltersCount > 0 ? theme.colors.primary : theme.colors.surface,
+                borderColor: activeFiltersCount > 0 ? theme.colors.primary : theme.colors.surfaceBorder,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Open filter sheet. ${activeFiltersCount} filters currently active.`}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <IconFilter
+                color={activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary}
+                size={13}
+              />
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  { color: activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.textPrimary },
+                ]}
+              >
+                Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Search Input */}
-      <TextInput
-        placeholder={
-          selectedTab === 'EXPENSE'
-            ? 'Search merchant, description, or notes...'
-            : 'Search source, note, or client...'
-        }
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-        autoCapitalize="none"
-      />
+      {/* Search Input with Instant Clear Button */}
+      <View style={styles.searchBoxWrapper}>
+        <TextInput
+          placeholder={
+            selectedTab === 'EXPENSE'
+              ? 'Search merchant, category, or note...'
+              : 'Search source, category, or note...'
+          }
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchInput}
+          autoCapitalize="none"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity
+            style={styles.searchClearBtn}
+            onPress={() => setSearch('')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={[styles.searchClearIcon, { color: theme.colors.textMuted }]}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Segmented Filter Control: [ Income | Expense ] */}
       <View
@@ -434,41 +622,89 @@ export const ExpensesListScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Active Filter Chips Bar (Category, Wallet, Date, Payment, Amount) */}
+      {(activeFiltersCount > 0 || search.length > 0) && (
+        <View style={styles.activeFiltersRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersScroll}>
+            {search.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearch('')}
+                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+              >
+                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                  🔍 "{search}" ✕
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {selectedWalletModel && (
+              <TouchableOpacity
+                onPress={() => setSelectedWalletId(null)}
+                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+              >
+                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                  👛 {selectedWalletModel.name} ✕
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {datePreset !== 'ALL' && (
+              <TouchableOpacity
+                onPress={() => setDatePreset('ALL')}
+                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+              >
+                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                  📅 {datePreset.replace('_', ' ')} ✕
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {selectedCategoryModel && (
+              <TouchableOpacity
+                onPress={() => setSelectedCategory(null)}
+                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+              >
+                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                  {selectedCategoryModel.icon} {selectedCategoryModel.name} ✕
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {selectedPaymentMethod && (
+              <TouchableOpacity
+                onPress={() => setSelectedPaymentMethod(null)}
+                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+              >
+                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                  💳 {selectedPaymentMethod.replace('_', ' ')} ✕
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {(minAmount.trim() || maxAmount.trim()) && (
+              <TouchableOpacity
+                onPress={() => {
+                  setMinAmount('');
+                  setMaxAmount('');
+                }}
+                style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
+              >
+                <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
+                  💵 {currency} {minAmount || '0'} - {maxAmount || '∞'} ✕
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity onPress={handleClearAllFilters} style={styles.clearAllButton}>
+              <Text style={[styles.clearAllText, { color: theme.colors.expense }]}>Clear All</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
+
       {/* EXPENSE VIEW */}
       {selectedTab === 'EXPENSE' ? (
         <>
-          {/* Active Filter Chips Bar */}
-          {activeFiltersCount > 0 && (
-            <View style={styles.activeFiltersRow}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFiltersScroll}>
-                {selectedCategoryModel && (
-                  <TouchableOpacity
-                    onPress={() => setSelectedCategory(null)}
-                    style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
-                  >
-                    <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
-                      {selectedCategoryModel.icon} {selectedCategoryModel.name} ✕
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {selectedPaymentMethod && (
-                  <TouchableOpacity
-                    onPress={() => setSelectedPaymentMethod(null)}
-                    style={[styles.activeFilterChip, { backgroundColor: `${theme.colors.primary}15`, borderColor: theme.colors.primary }]}
-                  >
-                    <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>
-                      {selectedPaymentMethod.replace('_', ' ')} ✕
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity onPress={handleClearAllFilters} style={styles.clearAllButton}>
-                  <Text style={[styles.clearAllText, { color: theme.colors.expense }]}>Clear All</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          )}
 
           {/* Grouped Expenses List */}
           <SectionList
@@ -647,8 +883,107 @@ export const ExpensesListScreen: React.FC = () => {
       <BottomSheet
         visible={isFilterSheetOpen}
         onClose={() => setIsFilterSheetOpen(false)}
-        title={selectedTab === 'EXPENSE' ? 'Filter Expenses' : 'Filter Income'}
+        title="Filter Transactions"
       >
+        {/* Wallet Filter Section */}
+        {wallets.length > 0 && (
+          <View style={styles.sheetSection}>
+            <Text style={[styles.sheetSectionTitle, { color: theme.colors.textMuted }]}>
+              Wallet
+            </Text>
+            <View style={styles.sheetChipsRow}>
+              <TouchableOpacity
+                onPress={() => setSelectedWalletId(null)}
+                style={[
+                  styles.sheetChip,
+                  {
+                    backgroundColor: selectedWalletId === null ? theme.colors.primary : theme.colors.surfaceSubtle,
+                    borderColor: selectedWalletId === null ? theme.colors.primary : theme.colors.surfaceBorder,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sheetChipText,
+                    { color: selectedWalletId === null ? '#FFFFFF' : theme.colors.textPrimary },
+                  ]}
+                >
+                  All Wallets
+                </Text>
+              </TouchableOpacity>
+
+              {wallets.map((w) => {
+                const isSelected = selectedWalletId === w.id;
+                return (
+                  <TouchableOpacity
+                    key={w.id}
+                    onPress={() => setSelectedWalletId(isSelected ? null : w.id)}
+                    style={[
+                      styles.sheetChip,
+                      {
+                        backgroundColor: isSelected ? theme.colors.primary : theme.colors.surfaceSubtle,
+                        borderColor: isSelected ? theme.colors.primary : theme.colors.surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.sheetChipIcon}>👛</Text>
+                    <Text
+                      style={[
+                        styles.sheetChipText,
+                        { color: isSelected ? '#FFFFFF' : theme.colors.textPrimary },
+                      ]}
+                    >
+                      {w.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Date Range Preset Section */}
+        <View style={styles.sheetSection}>
+          <Text style={[styles.sheetSectionTitle, { color: theme.colors.textMuted }]}>
+            Date Range
+          </Text>
+          <View style={styles.sheetChipsRow}>
+            {(
+              [
+                { label: 'All Time', value: 'ALL' },
+                { label: 'Today', value: 'TODAY' },
+                { label: 'This Week', value: 'THIS_WEEK' },
+                { label: 'This Month', value: 'THIS_MONTH' },
+                { label: 'Last Month', value: 'LAST_MONTH' },
+              ] as { label: string; value: DatePreset }[]
+            ).map((preset) => {
+              const isSelected = datePreset === preset.value;
+              return (
+                <TouchableOpacity
+                  key={preset.value}
+                  onPress={() => setDatePreset(preset.value)}
+                  style={[
+                    styles.sheetChip,
+                    {
+                      backgroundColor: isSelected ? theme.colors.primary : theme.colors.surfaceSubtle,
+                      borderColor: isSelected ? theme.colors.primary : theme.colors.surfaceBorder,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.sheetChipText,
+                      { color: isSelected ? '#FFFFFF' : theme.colors.textPrimary },
+                    ]}
+                  >
+                    {preset.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Category Filters */}
         <View style={styles.sheetSection}>
           <Text style={[styles.sheetSectionTitle, { color: theme.colors.textMuted }]}>
@@ -724,6 +1059,49 @@ export const ExpensesListScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* Amount Range Filter Section */}
+        <View style={styles.sheetSection}>
+          <Text style={[styles.sheetSectionTitle, { color: theme.colors.textMuted }]}>
+            Amount Range ({currency})
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <RNTextInput
+                value={minAmount}
+                onChangeText={setMinAmount}
+                placeholder="Min Amount"
+                placeholderTextColor={theme.colors.textMuted}
+                keyboardType="numeric"
+                style={[
+                  styles.filterAmountInput,
+                  {
+                    backgroundColor: theme.colors.surfaceSubtle,
+                    borderColor: theme.colors.surfaceBorder,
+                    color: theme.colors.textPrimary,
+                  },
+                ]}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <RNTextInput
+                value={maxAmount}
+                onChangeText={setMaxAmount}
+                placeholder="Max Amount"
+                placeholderTextColor={theme.colors.textMuted}
+                keyboardType="numeric"
+                style={[
+                  styles.filterAmountInput,
+                  {
+                    backgroundColor: theme.colors.surfaceSubtle,
+                    borderColor: theme.colors.surfaceBorder,
+                    color: theme.colors.textPrimary,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+
         {/* Sheet Actions */}
         <View style={styles.sheetActions}>
           <Button
@@ -740,6 +1118,81 @@ export const ExpensesListScreen: React.FC = () => {
           />
         </View>
       </BottomSheet>
+
+      {/* Export Report Modal */}
+      <Modal
+        visible={isExportModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsExportModalOpen(false)}
+      >
+        <View style={styles.exportModalOverlay}>
+          <View style={[styles.exportModalCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.exportModalTitle, { color: theme.colors.textPrimary }]}>
+              Export Transactions
+            </Text>
+            <Text style={[styles.exportModalSubtitle, { color: theme.colors.textSecondary }]}>
+              Export your records based on active filters ({selectedTab === 'EXPENSE' ? expenses.length : incomes.length} transactions).
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.exportOptionCard,
+                {
+                  borderColor: theme.colors.surfaceBorder,
+                  backgroundColor: theme.colors.surfaceSubtle,
+                },
+              ]}
+              onPress={handleExportCSV}
+              disabled={isExporting}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.exportOptionEmoji}>📊</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.exportOptionTitle, { color: theme.colors.textPrimary }]}>
+                  CSV Spreadsheet (.csv)
+                </Text>
+                <Text style={[styles.exportOptionDesc, { color: theme.colors.textMuted }]}>
+                  Compatible with Microsoft Excel, Google Sheets, & Apple Numbers
+                </Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.exportOptionCard,
+                {
+                  borderColor: theme.colors.surfaceBorder,
+                  backgroundColor: theme.colors.surfaceSubtle,
+                },
+              ]}
+              onPress={handleExportStatement}
+              disabled={isExporting}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.exportOptionEmoji}>📄</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.exportOptionTitle, { color: theme.colors.textPrimary }]}>
+                  Financial Statement (.txt)
+                </Text>
+                <Text style={[styles.exportOptionDesc, { color: theme.colors.textMuted }]}>
+                  Formatted accounting summary ready to share via WhatsApp or Email
+                </Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            <Button
+              label="Cancel"
+              variant="outline"
+              size="md"
+              onPress={() => setIsExportModalOpen(false)}
+              style={{ marginTop: 12 }}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit & Delete Expense Modal */}
       {selectedExpense && (
@@ -849,8 +1302,85 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     fontWeight: '700',
   },
-  searchInput: {
+  searchBoxWrapper: {
+    position: 'relative',
     marginBottom: 10,
+    justifyContent: 'center',
+  },
+  searchClearBtn: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 6,
+    zIndex: 3,
+  },
+  searchClearIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  searchInput: {
+    paddingRight: 40,
+  },
+  filterAmountInput: {
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14,
+  },
+  exportModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  exportModalCard: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  exportModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  exportModalSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  exportOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  exportOptionEmoji: {
+    fontSize: 24,
+    marginRight: 14,
+  },
+  exportOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  exportOptionDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  chevron: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   activeFiltersRow: {
     marginBottom: 10,

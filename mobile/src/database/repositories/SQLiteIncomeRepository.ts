@@ -256,10 +256,6 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
       query += ` AND i.wallet_id = ?`;
       params.push(filters.walletId);
     }
-    if (filters?.paymentMethod) {
-      query += ` AND i.payment_method = ?`;
-      params.push(filters.paymentMethod);
-    }
     if (filters?.startDate) {
       query += ` AND i.transaction_date >= ?`;
       params.push(filters.startDate);
@@ -268,9 +264,21 @@ export class SQLiteIncomeRepository implements IIncomeRepository {
       query += ` AND i.transaction_date <= ?`;
       params.push(filters.endDate);
     }
+    if (filters?.paymentMethod) {
+      query += ` AND i.payment_method = ?`;
+      params.push(filters.paymentMethod);
+    }
+    if (filters?.minAmountCents !== undefined) {
+      query += ` AND i.amount_cents >= ?`;
+      params.push(filters.minAmountCents);
+    }
+    if (filters?.maxAmountCents !== undefined) {
+      query += ` AND i.amount_cents <= ?`;
+      params.push(filters.maxAmountCents);
+    }
     if (filters?.search) {
-      query += ` AND (i.source LIKE ? OR i.note LIKE ?)`;
-      params.push(`%${filters.search}%`, `%${filters.search}%`);
+      query += ` AND (i.source LIKE ? OR i.note LIKE ? OR c.name LIKE ?)`;
+      params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
     }
 
     query += ` ORDER BY i.transaction_date DESC, i.created_at DESC`;

@@ -7,6 +7,8 @@ export interface IncomeFilters {
   startDate?: string;
   endDate?: string;
   search?: string;
+  minAmountCents?: number;
+  maxAmountCents?: number;
   limit?: number;
   offset?: number;
 }

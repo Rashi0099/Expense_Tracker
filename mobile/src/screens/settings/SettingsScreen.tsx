@@ -13,6 +13,10 @@ import { reminderService } from '../../services/reminderService';
 import { hotUpdateService, UpdateCheckResult } from '../../services/HotUpdateService';
 import { HotUpdateModal } from '../../components/common/HotUpdateModal';
 import { getCurrencySymbol } from '../../utils/money';
+import { securityLockService } from '../../services/securityLockService';
+import { PinSetupModal, PinModalMode } from '../../components/common/PinSetupModal';
+import { backupService } from '../../services/backupService';
+import { RestoreBackupModal } from '../../components/common/RestoreBackupModal';
 
 const AVAILABLE_CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
@@ -46,6 +50,16 @@ export const SettingsScreen: React.FC = () => {
 
   const [dailyRemindersEnabled, setDailyRemindersEnabled] = useState(true);
 
+  // Security Lock State
+  const [isPinLockEnabled, setIsPinLockEnabled] = useState(false);
+  const [pinTimeout, setPinTimeout] = useState(0);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinModalMode, setPinModalMode] = useState<PinModalMode>('SETUP');
+
+  // Backup & Restore State
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [isExportingBackup, setIsExportingBackup] = useState(false);
+
   useEffect(() => {
     async function loadNotifSettings() {
       const service = NotificationService.getInstance();
@@ -65,6 +79,14 @@ export const SettingsScreen: React.FC = () => {
       }
     }
     checkOta();
+
+    async function loadSecurity() {
+      const enabled = await securityLockService.isLockEnabled();
+      setIsPinLockEnabled(enabled);
+      const timeout = await securityLockService.getTimeout();
+      setPinTimeout(timeout);
+    }
+    loadSecurity();
   }, []);
 
   const handleCheckUpdate = async () => {
@@ -115,6 +137,40 @@ export const SettingsScreen: React.FC = () => {
     const newSettings = { ...notifSettings, budgetAlertsEnabled: updated };
     setNotifSettings(newSettings);
     await NotificationService.getInstance().updateSettings({ budgetAlertsEnabled: updated });
+  };
+
+  const handleTogglePin = (value: boolean) => {
+    if (value) {
+      setPinModalMode('SETUP');
+      setShowPinModal(true);
+    } else {
+      setPinModalMode('DISABLE');
+      setShowPinModal(true);
+    }
+  };
+
+  const handleChangePin = () => {
+    setPinModalMode('CHANGE');
+    setShowPinModal(true);
+  };
+
+  const handleSelectTimeout = async (sec: number) => {
+    setPinTimeout(sec);
+    await securityLockService.setTimeout(sec);
+  };
+
+  const handleExportBackup = async () => {
+    setIsExportingBackup(true);
+    try {
+      const ok = await backupService.shareBackup();
+      if (!ok) {
+        Alert.alert('Backup Info', 'Could not open share dialog.');
+      }
+    } catch (err: any) {
+      Alert.alert('Backup Error', err.message || 'Failed to export backup.');
+    } finally {
+      setIsExportingBackup(false);
+    }
   };
 
   const handleSignOut = () => {
@@ -341,7 +397,126 @@ export const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
       </Card>
 
+      {/* Security & App Lock Card */}
+      <Card style={styles.card}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
+          Security & App Lock
+        </Text>
+        <View style={styles.row}>
+          <View style={styles.notifTextContainer}>
+            <Text style={[styles.label, { color: theme.colors.textPrimary, fontWeight: '600' }]}>
+              4-Digit PIN Lock
+            </Text>
+            <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted }]}>
+              Require PIN on launch & returning from background
+            </Text>
+          </View>
+          <Switch
+            value={isPinLockEnabled}
+            onValueChange={handleTogglePin}
+            trackColor={{ false: theme.colors.surfaceBorder, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+            accessibilityRole="switch"
+            accessibilityLabel="Toggle 4-digit PIN security lock"
+          />
+        </View>
 
+        {isPinLockEnabled && (
+          <>
+            <View style={[styles.divider, { backgroundColor: theme.colors.surfaceBorder }]} />
+
+            <TouchableOpacity
+              style={styles.securityActionRow}
+              onPress={handleChangePin}
+              activeOpacity={0.7}
+            >
+              <View>
+                <Text style={[styles.label, { color: theme.colors.textPrimary, fontWeight: '600' }]}>
+                  Change Security PIN
+                </Text>
+                <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted }]}>
+                  Update your 4-digit master passcode
+                </Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.divider, { backgroundColor: theme.colors.surfaceBorder }]} />
+
+            <View style={{ marginTop: 6, marginBottom: 4 }}>
+              <Text style={[styles.label, { color: theme.colors.textPrimary, fontWeight: '600' }]}>
+                Auto-Lock Timeout
+              </Text>
+              <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted, marginBottom: 8 }]}>
+                Lock immediately or after inactivity
+              </Text>
+              <View style={styles.timeoutChipsRow}>
+                {[
+                  { label: 'Immediately', sec: 0 },
+                  { label: '30 sec', sec: 30 },
+                  { label: '1 min', sec: 60 },
+                  { label: '5 min', sec: 300 },
+                ].map((opt) => {
+                  const isSelected = pinTimeout === opt.sec;
+                  return (
+                    <TouchableOpacity
+                      key={opt.sec}
+                      onPress={() => handleSelectTimeout(opt.sec)}
+                      style={[
+                        styles.timeoutChip,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.colors.primary
+                            : theme.colors.surfaceSubtle,
+                          borderColor: isSelected
+                            ? theme.colors.primary
+                            : theme.colors.surfaceBorder,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.timeoutChipText,
+                          { color: isSelected ? '#FFFFFF' : theme.colors.textPrimary },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </>
+        )}
+      </Card>
+
+      {/* Data Backup & Restore Card */}
+      <Card style={styles.card}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
+          Data Backup & Restore
+        </Text>
+        <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted, marginBottom: 12 }]}>
+          Export an offline JSON copy of all transactions, wallets, and categories, or restore an earlier backup safely.
+        </Text>
+        <View style={styles.backupButtonRow}>
+          <Button
+            label={isExportingBackup ? 'Exporting...' : '📦 Export Backup'}
+            variant="outline"
+            size="sm"
+            isLoading={isExportingBackup}
+            onPress={handleExportBackup}
+            style={{ flex: 1 }}
+          />
+          <Button
+            label="📥 Restore Backup"
+            variant="primary"
+            size="sm"
+            onPress={() => setShowRestoreModal(true)}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </Card>
 
       {/* Preferences Card */}
       <Card style={styles.card}>
@@ -383,6 +558,27 @@ export const SettingsScreen: React.FC = () => {
           setShowUpdateModal(false);
           const ver = await hotUpdateService.getCurrentVersion();
           setAppVersion(ver);
+        }}
+      />
+
+      {/* 4-Digit PIN Setup/Change Modal */}
+      <PinSetupModal
+        visible={showPinModal}
+        mode={pinModalMode}
+        onClose={() => setShowPinModal(false)}
+        onSuccess={async () => {
+          setShowPinModal(false);
+          const enabled = await securityLockService.isLockEnabled();
+          setIsPinLockEnabled(enabled);
+        }}
+      />
+
+      {/* Restore from Backup Modal */}
+      <RestoreBackupModal
+        visible={showRestoreModal}
+        onClose={() => setShowRestoreModal(false)}
+        onSuccess={() => {
+          setShowRestoreModal(false);
         }}
       />
 
@@ -617,5 +813,32 @@ const styles = StyleSheet.create({
   checkmarkText: {
     fontSize: 18,
     fontWeight: '800',
+  },
+  securityActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  timeoutChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  timeoutChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  timeoutChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  backupButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
   },
 });

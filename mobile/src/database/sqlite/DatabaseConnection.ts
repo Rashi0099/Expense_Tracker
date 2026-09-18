@@ -48,10 +48,10 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
       return { rows: [], rowsAffected: 0 };
     }
 
-    // Insert (supports INSERT INTO and INSERT OR IGNORE INTO)
+    // Insert (supports INSERT INTO, INSERT OR IGNORE INTO, and INSERT OR REPLACE INTO)
     if (upper.startsWith('INSERT')) {
       const match = cleanQuery.match(
-        /INSERT\s+(?:OR\s+IGNORE\s+)?INTO\s+([a-zA-Z0-9_]+)\s*\(([\s\S]+?)\)\s*VALUES\s*\(([\s\S]+?)\)/i
+        /INSERT\s+(?:OR\s+(?:IGNORE|REPLACE)\s+)?INTO\s+([a-zA-Z0-9_]+)\s*\(([\s\S]+?)\)\s*VALUES\s*\(([\s\S]+?)\)/i
       );
       if (match && match[1]) {
         const tableName = match[1].toLowerCase();
@@ -87,7 +87,7 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
             return { rows: [], rowsAffected: 0 };
           }
         }
-        if (cleanQuery.includes('ON CONFLICT')) {
+        if (cleanQuery.includes('ON CONFLICT') || cleanQuery.includes('OR REPLACE')) {
           if (rowData.user_id !== undefined && rowData.keyword_normalized !== undefined) {
             const existingIdx = table.findIndex(
               (r) => r.user_id === rowData.user_id && r.keyword_normalized === rowData.keyword_normalized
@@ -197,6 +197,18 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
           if (whereClause.match(/(?:^|\s)(?:e\.|i\.)?payment_method\s*=\s*\?/i)) {
             const method = params[pIdx++];
             filtered = filtered.filter((r) => r.payment_method === method);
+          }
+
+          // Check amount_cents >= ?
+          if (whereClause.match(/(?:^|\s)(?:e\.|i\.)?amount_cents\s*>=\s*\?/i)) {
+            const minCents = Number(params[pIdx++]);
+            filtered = filtered.filter((r) => Number(r.amount_cents) >= minCents);
+          }
+
+          // Check amount_cents <= ?
+          if (whereClause.match(/(?:^|\s)(?:e\.|i\.)?amount_cents\s*<=\s*\?/i)) {
+            const maxCents = Number(params[pIdx++]);
+            filtered = filtered.filter((r) => Number(r.amount_cents) <= maxCents);
           }
 
           // Check search LIKE conditions
@@ -465,6 +477,10 @@ export class MemorySQLiteAdapter implements ISQLiteDatabase {
           const remaining = table.filter((r) => r.user_id !== targetUser);
           const affected = table.length - remaining.length;
           this.tables.set(tableName, remaining);
+          return { rows: [], rowsAffected: affected };
+        } else if (!cleanQuery.toUpperCase().includes('WHERE')) {
+          const affected = table.length;
+          this.tables.set(tableName, []);
           return { rows: [], rowsAffected: affected };
         }
       }

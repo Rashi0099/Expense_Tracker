@@ -299,8 +299,17 @@ export const WalletsScreen: React.FC = () => {
         );
       })}
 
-      {/* Add Wallet Button */}
+      {/* Action Buttons: Add Wallet & Transfer Funds */}
       <View style={styles.addBtnContainer}>
+        {wallets.length >= 2 && (
+          <Button
+            label="🔄 Transfer Between Wallets"
+            onPress={() => navigation.navigate('QuickExpense', { tab: 'TRANSFER' })}
+            variant="outline"
+            size="lg"
+            style={{ marginBottom: 10 }}
+          />
+        )}
         <Button
           label="+ Add New Wallet"
           onPress={() => setIsAddModalOpen(true)}

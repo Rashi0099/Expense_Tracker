@@ -271,9 +271,17 @@ export class SQLiteExpenseRepository implements IExpenseRepository {
       query += ` AND e.payment_method = ?`;
       params.push(filters.paymentMethod);
     }
+    if (filters?.minAmountCents !== undefined) {
+      query += ` AND e.amount_cents >= ?`;
+      params.push(filters.minAmountCents);
+    }
+    if (filters?.maxAmountCents !== undefined) {
+      query += ` AND e.amount_cents <= ?`;
+      params.push(filters.maxAmountCents);
+    }
     if (filters?.search) {
-      query += ` AND (e.payee LIKE ? OR e.note LIKE ?)`;
-      params.push(`%${filters.search}%`, `%${filters.search}%`);
+      query += ` AND (e.payee LIKE ? OR e.note LIKE ? OR c.name LIKE ?)`;
+      params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
     }
 
     query += ` ORDER BY e.transaction_date DESC, e.created_at DESC`;
