@@ -56,7 +56,6 @@ export async function ensureDefaultWalletUseCase(
   repo: IWalletRepository = new SQLiteWalletRepository()
 ): Promise<WalletModel> {
   const wallet = await repo.ensureDefaultWallet(userId);
-  DataEvents.notify('WALLETS_CHANGED');
   return wallet;
 }
 

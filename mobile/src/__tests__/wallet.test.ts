@@ -222,7 +222,6 @@ describe('Wallet 1 & Multi-Wallet Isolation Feature', () => {
 
     // Ensure default wallet first
     await ensureDefaultWalletUseCase(TEST_USER);
-    expect(eventFired).toBe(true);
 
     eventFired = false;
     const newWallet = await createWalletUseCase('Crypto Wallet');

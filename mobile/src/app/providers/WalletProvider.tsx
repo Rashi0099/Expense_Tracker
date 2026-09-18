@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WalletModel } from '../../domain/models';
 import {
@@ -42,6 +42,7 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [wallets, setWallets] = useState<WalletModel[]>([]);
   const [activeWalletId, setActiveWalletIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isRefreshingRef = useRef(false);
 
   const activeWallet = wallets.find((w) => w.id === activeWalletId) || wallets[0] || null;
 
@@ -52,6 +53,11 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setIsLoading(false);
       return;
     }
+
+    if (isRefreshingRef.current) {
+      return;
+    }
+    isRefreshingRef.current = true;
 
     try {
       // 1. Ensure user has at least default 'Wallet 1'
@@ -78,6 +84,7 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       // Handled
     } finally {
       setIsLoading(false);
+      isRefreshingRef.current = false;
     }
   }, [user?.id]);
 
