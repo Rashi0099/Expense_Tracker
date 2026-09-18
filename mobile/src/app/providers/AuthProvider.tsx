@@ -70,34 +70,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize session and SQLite on launch
   useEffect(() => {
+    let isMounted = true;
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+
     async function bootstrap() {
+      // Safety guard: Ensure the app never hangs on the splash loading screen for more than 1.5 seconds
+      safetyTimer = setTimeout(() => {
+        if (isMounted) {
+          console.warn('[AuthProvider] Bootstrap safety timeout reached (1.5s); unlocking UI');
+          setIsLoading(false);
+        }
+      }, 1500);
+
       try {
         // Ensure device ID exists
-        let deviceId = await SecureStorage.getDeviceId();
+        let deviceId = await SecureStorage.getDeviceId().catch(() => null);
         if (!deviceId) {
           deviceId = generateUUID();
-          await SecureStorage.setDeviceId(deviceId);
+          await SecureStorage.setDeviceId(deviceId).catch(() => {});
         }
 
         // Initialize local SQLite
-        await DatabaseManager.getInstance().initialize();
+        await DatabaseManager.getInstance().initialize().catch((err) => {
+          console.warn('[AuthProvider] DatabaseManager.initialize failed:', err);
+        });
 
         // Seed default categories
-        const catRepo = new SQLiteCategoryRepository();
-        await catRepo.seedDefaults();
+        try {
+          const catRepo = new SQLiteCategoryRepository();
+          await catRepo.seedDefaults();
+        } catch (catErr) {
+          console.warn('[AuthProvider] Seed defaults failed:', catErr);
+        }
 
         // Check for cached user & refresh token
-        const cachedUser = await SecureStorage.getUserData<MobileUser>();
-        const refreshToken = await SecureStorage.getRefreshToken();
+        const cachedUser = await SecureStorage.getUserData<MobileUser>().catch(() => null);
+        const refreshToken = await SecureStorage.getRefreshToken().catch(() => null);
 
-        if (cachedUser && refreshToken) {
+        if (isMounted && cachedUser && refreshToken) {
           // Test user 9999999999 always sees onboarding on each app entry
           let onboardingDone = false;
           if (isTestPhoneNumber(cachedUser.phoneNumber)) {
-            await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`);
+            await AsyncStorage.removeItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`).catch(() => {});
             onboardingDone = false;
           } else {
-            const onboardingFlag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`);
+            const onboardingFlag = await AsyncStorage.getItem(`${ONBOARDING_KEY_PREFIX}${cachedUser.id}`).catch(() => null);
             onboardingDone = !!onboardingFlag;
           }
 
@@ -109,13 +126,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           FCMPushService.getInstance().registerDevicePushToken().catch(() => {});
         }
       } catch (err) {
-        // Fail gracefully
+        console.warn('[AuthProvider] Bootstrap exception:', err);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          if (safetyTimer) clearTimeout(safetyTimer);
+          setIsLoading(false);
+        }
       }
     }
 
     bootstrap();
+
+    return () => {
+      isMounted = false;
+      if (safetyTimer) clearTimeout(safetyTimer);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

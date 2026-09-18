@@ -38,13 +38,25 @@ export class DatabaseManager {
       return this.db;
     }
 
-    // In native environment use QuickSQLiteAdapter
-    this.db = new QuickSQLiteAdapter(ENV.SQLITE_DB_NAME);
-    const runner = new MigrationRunner(this.db);
-    await runner.runMigrations();
-
-    this.isInitialized = true;
-    return this.db;
+    try {
+      // In native environment use QuickSQLiteAdapter
+      this.db = new QuickSQLiteAdapter(ENV.SQLITE_DB_NAME);
+      const runner = new MigrationRunner(this.db);
+      await runner.runMigrations();
+      this.isInitialized = true;
+      return this.db;
+    } catch (err) {
+      console.warn('[DatabaseManager] Native SQLite initialization/migration failed, falling back to MemorySQLiteAdapter:', err);
+      this.db = new MemorySQLiteAdapter();
+      try {
+        const fallbackRunner = new MigrationRunner(this.db);
+        await fallbackRunner.runMigrations();
+      } catch (fallbackErr) {
+        console.warn('[DatabaseManager] Fallback in-memory migration error:', fallbackErr);
+      }
+      this.isInitialized = true;
+      return this.db;
+    }
   }
 
   getDatabase(): ISQLiteDatabase {

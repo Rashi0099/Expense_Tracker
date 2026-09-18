@@ -14,6 +14,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../theme/useTheme';
+import { useAuth } from '../../app/providers/AuthProvider';
 import { APP_LOGO } from '../../assets/appLogo';
 
 const PRIVACY_SETTING_KEY = '@settings/privacy_shield_enabled';
@@ -36,10 +37,33 @@ interface ScreenPrivacyShieldProps {
 
 export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ children }) => {
   const { theme } = useTheme();
+  const { isAuthenticated, isLoading } = useAuth();
   const [isShieldActive, setIsShieldActive] = useState(false);
+  const [isPrivacyShieldEnabled, setIsPrivacyShieldEnabled] = useState(true);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PRIVACY_SETTING_KEY)
+      .then((val) => {
+        if (val !== null) {
+          setIsPrivacyShieldEnabled(val === 'true');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const setPrivacyShieldEnabled = async (enabled: boolean) => {
+    setIsPrivacyShieldEnabled(enabled);
+    await AsyncStorage.setItem(PRIVACY_SETTING_KEY, String(enabled)).catch(() => {});
+  };
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      // Never activate privacy shield if user is not authenticated or still loading
+      if (!isAuthenticated || isLoading || !isPrivacyShieldEnabled) {
+        setIsShieldActive(false);
+        return;
+      }
+
       if (nextAppState === 'inactive' || nextAppState === 'background') {
         setIsShieldActive(true);
       } else if (nextAppState === 'active') {
@@ -53,19 +77,19 @@ export const ScreenPrivacyShield: React.FC<ScreenPrivacyShieldProps> = ({ childr
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [isAuthenticated, isLoading, isPrivacyShieldEnabled]);
 
   return (
     <ScreenPrivacyContext.Provider
       value={{
-        isPrivacyShieldEnabled: true,
-        setPrivacyShieldEnabled: async () => {},
+        isPrivacyShieldEnabled,
+        setPrivacyShieldEnabled,
       }}
     >
       <View style={styles.container}>
         {children}
 
-        {isShieldActive && (
+        {isShieldActive && isAuthenticated && !isLoading && isPrivacyShieldEnabled && (
           <View
             style={[
               styles.shieldOverlay,

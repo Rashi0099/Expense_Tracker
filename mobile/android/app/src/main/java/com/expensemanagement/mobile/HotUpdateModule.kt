@@ -190,43 +190,38 @@ class HotUpdateModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun reloadApp() {
-        val activity: Activity? = currentActivity
-
+        // Safe OTA reload: recreate the React context so the new JS bundle is picked up.
+        // This avoids killing the process while a new Activity is still initializing, which
+        // caused the blank screen on cold launches after an OTA update was downloaded.
         UiThreadUtil.runOnUiThread {
             try {
-                if (activity != null) {
-                    // Full process-level restart: kills the current task and relaunches from scratch.
-                    // This ensures getJSBundleFile() is called again and the new OTA bundle is picked up.
-                    val packageName = activity.packageName
-                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(packageName)
-                    if (launchIntent != null) {
-                        launchIntent.addFlags(
-                            Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        )
-                        activity.startActivity(launchIntent)
-                        // Finish all activities in the stack so the process restarts cleanly
-                        activity.finishAffinity()
-                        // Kill the current process after a tiny delay so the new intent is queued
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            android.os.Process.killProcess(android.os.Process.myPid())
-                        }, 300)
+                val instanceManager = (reactContext.applicationContext as? ReactApplication)
+                    ?.reactNativeHost
+                    ?.reactInstanceManager
+
+                if (instanceManager != null) {
+                    // Recreate React context in-place — the new getJSBundleFile() path is used.
+                    instanceManager.recreateReactContextInBackground()
+                } else {
+                    // Fallback: safe Activity restart without killing the process.
+                    val activity = currentActivity
+                    if (activity != null) {
+                        val packageName = activity.packageName
+                        val launchIntent = activity.packageManager.getLaunchIntentForPackage(packageName)
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(
+                                Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            )
+                            activity.startActivity(launchIntent)
+                            activity.finishAffinity()
+                            // Do NOT call killProcess here – let Android recycle the process naturally.
+                        }
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Last-resort fallback: just finish and relaunch
-                try {
-                    activity?.let {
-                        val intent = it.packageManager.getLaunchIntentForPackage(it.packageName)
-                        if (intent != null) {
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                            it.startActivity(intent)
-                            it.finishAffinity()
-                        }
-                    }
-                } catch (_: Exception) {}
             }
         }
     }

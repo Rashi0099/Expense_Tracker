@@ -16,23 +16,22 @@ export const App: React.FC = () => {
     // Initialize 3x daily reminder alarms
     reminderService.init().catch(() => {});
 
-    // Background check for updates after startup
+    // Background check for updates after startup (silent download for next launch)
     const timer = setTimeout(async () => {
       try {
         const update = await hotUpdateService.checkForUpdate();
         if (update.isAvailable && update.bundleUrl && update.latestVersion) {
-          const downloaded = await hotUpdateService.downloadUpdate(
+          await hotUpdateService.downloadUpdate(
             update.bundleUrl,
             update.latestVersion
           );
-          if (downloaded) {
-            hotUpdateService.reloadApp();
-          }
+          // Downloaded safely in background; will be loaded automatically on next app launch.
+          // Never force reloadApp() while the user is actively using the app.
         }
       } catch {
         // Silent catch for background check
       }
-    }, 2000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -41,16 +40,16 @@ export const App: React.FC = () => {
     <ErrorBoundary>
       <SafeAreaProvider>
         <ThemeProvider>
-          <ScreenPrivacyShield>
-            <AuthProvider>
-              <WalletProvider>
-                <BalanceVisibilityProvider>
+          <AuthProvider>
+            <WalletProvider>
+              <BalanceVisibilityProvider>
+                <ScreenPrivacyShield>
                   <RootNavigator />
                   <SecurityLockOverlay />
-                </BalanceVisibilityProvider>
-              </WalletProvider>
-            </AuthProvider>
-          </ScreenPrivacyShield>
+                </ScreenPrivacyShield>
+              </BalanceVisibilityProvider>
+            </WalletProvider>
+          </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

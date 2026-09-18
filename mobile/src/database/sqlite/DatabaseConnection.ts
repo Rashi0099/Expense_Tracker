@@ -545,16 +545,15 @@ export class QuickSQLiteAdapter implements ISQLiteDatabase {
     return this.dbInstance;
   }
 
-  async executeSql<T = unknown>(query: string, params: unknown[] = []): Promise<QueryResult<T>> {
-    const db = this.getDB();
-    if (!db) {
-      // Fallback
-      return { rows: [], rowsAffected: 0 };
+  private executeSingleSql<T = unknown>(db: any, query: string, params: unknown[] = []): Promise<QueryResult<T>> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return Promise.resolve({ rows: [], rowsAffected: 0 });
     }
 
     return new Promise((resolve, reject) => {
       try {
-        const result = db.execute(query, params);
+        const result = db.execute(trimmed, params);
         const rows: T[] = result?.rows?._array || [];
         resolve({
           rows,
@@ -565,6 +564,32 @@ export class QuickSQLiteAdapter implements ISQLiteDatabase {
         reject(err);
       }
     });
+  }
+
+  async executeSql<T = unknown>(query: string, params: unknown[] = []): Promise<QueryResult<T>> {
+    const db = this.getDB();
+    if (!db) {
+      // Fallback
+      return { rows: [], rowsAffected: 0 };
+    }
+
+    // If query has multiple statements separated by ';' and no params, execute sequentially
+    if (params.length === 0 && query.includes(';')) {
+      const statements = query
+        .split(';')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+      if (statements.length > 1) {
+        let lastResult: QueryResult<T> = { rows: [], rowsAffected: 0 };
+        for (const stmt of statements) {
+          lastResult = await this.executeSingleSql<T>(db, stmt, []);
+        }
+        return lastResult;
+      }
+    }
+
+    return this.executeSingleSql<T>(db, query, params);
   }
 
   async transaction<T>(action: (tx: ISQLiteDatabase) => Promise<T>): Promise<T> {
