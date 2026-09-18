@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
 import { Card } from '../../components/common/Card';
@@ -318,6 +318,26 @@ export const SettingsScreen: React.FC = () => {
             Direct Over-The-Air (EC2)
           </Text>
         </View>
+        <View style={[styles.divider, { backgroundColor: theme.colors.surfaceBorder }]} />
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => {
+            Linking.openURL('http://51.21.200.201/ota/app-release.apk');
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={[styles.label, { color: theme.colors.textPrimary, fontWeight: '600' }]}>
+              Download Full APK Build
+            </Text>
+            <Text style={[styles.notifSubtitle, { color: theme.colors.textMuted }]}>
+              v1.0.16 — Includes Native PDF Engine & Icon fixes
+            </Text>
+          </View>
+          <Text style={{ fontSize: 13, color: theme.colors.primary, fontWeight: '700' }}>
+            Download ⬇️
+          </Text>
+        </TouchableOpacity>
       </Card>
 
       {/* Notification Preferences Card */}
