@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Dimensions, StatusBar, SafeAreaView,
+  StatusBar, SafeAreaView, useWindowDimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../app/navigation/types';
@@ -13,13 +13,13 @@ import { useAuth } from '../../app/providers/AuthProvider';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'OnboardingStep2'>;
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const PADDING = 16;
 const GAP = 6;
 const COLS = 3;
-const CHIP_WIDTH = (SCREEN_WIDTH - PADDING * 2 - GAP * (COLS - 1)) / COLS;
 
 export const Step2ExpenseCategoriesScreen: React.FC<Props> = ({ navigation }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  const chipWidth = Math.floor((windowWidth - PADDING * 2 - GAP * (COLS - 1)) / COLS);
   const { selectedExpenseIds, toggleExpenseCategory, skipOnboarding } = useOnboarding();
   const { user, markOnboardingComplete } = useAuth();
 
@@ -64,7 +64,7 @@ export const Step2ExpenseCategoriesScreen: React.FC<Props> = ({ navigation }) =>
                   label={cat.name}
                   selected={selectedExpenseIds.includes(cat.id)}
                   onPress={() => toggleExpenseCategory(cat.id)}
-                  chipWidth={CHIP_WIDTH}
+                  chipWidth={chipWidth}
                 />
               ))}
             </View>

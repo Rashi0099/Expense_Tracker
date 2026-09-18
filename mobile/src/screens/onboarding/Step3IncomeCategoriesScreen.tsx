@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Dimensions, StatusBar, SafeAreaView, ActivityIndicator,
+  StatusBar, SafeAreaView, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../app/navigation/types';
@@ -13,13 +13,13 @@ import { useAuth } from '../../app/providers/AuthProvider';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'OnboardingStep3'>;
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const PADDING = 16;
 const GAP = 6;
 const COLS = 3;
-const CHIP_WIDTH = (SCREEN_WIDTH - PADDING * 2 - GAP * (COLS - 1)) / COLS;
 
 export const Step3IncomeCategoriesScreen: React.FC<Props> = ({ navigation }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  const chipWidth = Math.floor((windowWidth - PADDING * 2 - GAP * (COLS - 1)) / COLS);
   const { selectedIncomeIds, toggleIncomeCategory, completeOnboarding, isSaving, skipOnboarding } = useOnboarding();
   const { user, markOnboardingComplete } = useAuth();
 
@@ -74,7 +74,7 @@ export const Step3IncomeCategoriesScreen: React.FC<Props> = ({ navigation }) => 
                   label={cat.name}
                   selected={selectedIncomeIds.includes(cat.id)}
                   onPress={() => toggleIncomeCategory(cat.id)}
-                  chipWidth={CHIP_WIDTH}
+                  chipWidth={chipWidth}
                 />
               ))}
             </View>

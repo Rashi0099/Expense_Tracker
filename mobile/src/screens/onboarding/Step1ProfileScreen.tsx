@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  Dimensions, StatusBar, SafeAreaView,
+  StatusBar, SafeAreaView, useWindowDimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../app/navigation/types';
@@ -12,12 +12,12 @@ import { useAuth } from '../../app/providers/AuthProvider';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'OnboardingStep1'>;
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const COLS = 4;
 const TILE_MARGIN = 6;
-const TILE_WIDTH = (SCREEN_WIDTH - 32 - TILE_MARGIN * (COLS - 1)) / COLS;
 
 export const Step1ProfileScreen: React.FC<Props> = ({ navigation }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  const tileWidth = Math.floor((windowWidth - 32 - TILE_MARGIN * (COLS - 1)) / COLS);
   const { profile, setProfile, skipOnboarding } = useOnboarding();
   const { user, markOnboardingComplete } = useAuth();
 
@@ -58,7 +58,7 @@ export const Step1ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 activeOpacity={0.75}
                 style={[
                   styles.tile,
-                  { width: TILE_WIDTH, height: TILE_WIDTH + 14 },
+                  { width: tileWidth, height: tileWidth + 14 },
                   isSelected ? styles.tileSelected : styles.tileUnselected,
                 ]}
               >
