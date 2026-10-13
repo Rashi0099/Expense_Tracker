@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface BottomSheetProps {
   visible: boolean;
@@ -27,6 +28,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   maxHeight = '75%',
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal
@@ -47,6 +49,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             backgroundColor: theme.colors.surface,
             borderTopColor: theme.colors.surfaceBorder,
             maxHeight: maxHeight as any,
+            paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 34 : 24),
           },
         ]}
         accessibilityViewIsModal={true}

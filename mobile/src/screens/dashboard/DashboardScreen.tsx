@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ScrollView,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/common/Screen';
@@ -36,7 +38,6 @@ import { IncomeExpenseTrendCard } from './components/IncomeExpenseTrendCard';
 import { useWallet } from '../../app/providers/WalletProvider';
 import { useBalanceVisibility } from '../../app/providers/BalanceVisibilityProvider';
 import { IconWallet } from '../../components/common/NavIcons';
-import { BottomSheet } from '../../components/common/BottomSheet';
 
 export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -48,6 +49,25 @@ export const DashboardScreen: React.FC = () => {
   const { isBalanceHidden } = useBalanceVisibility();
 
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const walletBtnRef = useRef<View>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 70, right: 16 });
+
+  const handleOpenWalletDropdown = () => {
+    if (walletBtnRef.current && (walletBtnRef.current as any).measureInWindow) {
+      (walletBtnRef.current as any).measureInWindow((x: number, y: number, width: number, height: number) => {
+        if (y && !isNaN(y)) {
+          const windowWidth = Dimensions.get('window').width;
+          setDropdownPos({
+            top: y + height + 6,
+            right: Math.max(16, windowWidth - (x + width)),
+          });
+        }
+        setShowWalletModal(true);
+      });
+    } else {
+      setShowWalletModal(true);
+    }
+  };
 
   const [summary, setSummary] = useState<DashboardSummary>({
     netBalanceCents: 0,
@@ -171,21 +191,23 @@ export const DashboardScreen: React.FC = () => {
         </View>
 
         {/* Top-Right Wallet Switcher Button */}
-        <TouchableOpacity
-          style={[
-            styles.walletSwitchBtn,
-            {
-              backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-              borderColor: isDark ? '#334155' : '#E2E8F0',
-            },
-          ]}
-          onPress={() => setShowWalletModal(true)}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={`Active wallet: ${activeWallet?.name || 'Wallet 1'}. Tap to switch.`}
-        >
-          <IconWallet color={theme.colors.primary} size={18} />
-        </TouchableOpacity>
+        <View ref={walletBtnRef} collapsable={false}>
+          <TouchableOpacity
+            style={[
+              styles.walletSwitchBtn,
+              {
+                backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                borderColor: isDark ? '#334155' : '#E2E8F0',
+              },
+            ]}
+            onPress={handleOpenWalletDropdown}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Active wallet: ${activeWallet?.name || 'Wallet 1'}. Tap to switch.`}
+          >
+            <IconWallet color={theme.colors.primary} size={18} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Standalone Cashflow Overview Card (Total Balance + Side-by-side Income & Expenses) */}
@@ -402,98 +424,141 @@ export const DashboardScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Wallet Switcher BottomSheet */}
-      <BottomSheet
+      {/* Wallet Switcher Inline Dropdown Menu */}
+      <Modal
+        transparent
         visible={showWalletModal}
-        onClose={() => setShowWalletModal(false)}
-        title="Select Wallet"
+        animationType="none"
+        onRequestClose={() => setShowWalletModal(false)}
+        statusBarTranslucent
       >
-        <View style={styles.walletModalContent}>
-          <View style={styles.walletList}>
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowWalletModal(false)}
+        >
+          <View
+            style={[
+              styles.walletDropdownMenu,
+              {
+                top: dropdownPos.top,
+                right: dropdownPos.right,
+                backgroundColor: isDark ? '#161F35' : '#FFFDF8',
+                borderColor: isDark ? '#263352' : '#E7D788',
+                shadowOpacity: isDark ? 0.45 : 0.12,
+              },
+            ]}
+          >
+            <View style={styles.walletDropdownHeader}>
+              <Text style={[styles.walletDropdownTitle, { color: isDark ? '#9AAAC8' : '#718096' }]}>
+                SELECT WALLET
+              </Text>
+            </View>
+
             {wallets.map((wallet) => {
               const isSelected = wallet.id === activeWalletId;
               return (
                 <TouchableOpacity
                   key={wallet.id}
                   style={[
-                    styles.walletItemRow,
+                    styles.walletDropdownItem,
                     isSelected && {
-                      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#EFF6FF',
-                      borderColor: isDark ? '#3B82F6' : '#93C5FD',
+                      backgroundColor: isDark
+                        ? 'rgba(79, 142, 247, 0.18)'
+                        : 'rgba(29, 88, 66, 0.10)',
                     },
                   ]}
                   onPress={async () => {
                     await setActiveWalletId(wallet.id);
                     setShowWalletModal(false);
                   }}
-                  activeOpacity={0.7}
+                  activeOpacity={0.6}
                 >
-                  <View style={styles.walletItemLeft}>
-                    <View>
-                      <Text
+                  <View style={styles.walletDropdownItemLeft}>
+                    <Text
+                      style={[
+                        styles.walletDropdownItemName,
+                        {
+                          color: isSelected
+                            ? (isDark ? '#4F8EF7' : '#1D5842')
+                            : (isDark ? '#E8EDF8' : '#17233C'),
+                          fontWeight: isSelected ? '700' : '600',
+                        },
+                      ]}
+                    >
+                      {wallet.name}
+                    </Text>
+                    {wallet.isDefault && (
+                      <View
                         style={[
-                          styles.walletItemName,
+                          styles.walletDefaultBadge,
                           {
-                            color: isSelected ? theme.colors.primary : theme.colors.textPrimary,
-                            fontWeight: isSelected ? '700' : '600',
+                            backgroundColor: isDark ? 'rgba(148, 163, 184, 0.15)' : '#F1F5F9',
                           },
                         ]}
                       >
-                        {wallet.name}
-                      </Text>
-                      {wallet.isDefault && (
-                        <Text style={[styles.walletItemDefaultTag, { color: theme.colors.textMuted }]}>
+                        <Text style={[styles.walletDefaultBadgeText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                           Default
                         </Text>
-                      )}
-                    </View>
-                  </View>
-                  <Text
-                    style={[
-                      styles.walletItemBalance,
-                      {
-                        color:
-                          (wallet.balanceCents || 0) >= 0
-                            ? theme.colors.textPrimary
-                            : theme.colors.expense,
-                        fontWeight: isSelected ? '700' : '500',
-                      },
-                    ]}
-                  >
-                    {isBalanceHidden ? (
-                      '••••'
-                    ) : (
-                      <CurrencyText amountCents={wallet.balanceCents || 0} currency={currency} />
+                      </View>
                     )}
-                  </Text>
+                  </View>
+
+                  <View style={styles.walletDropdownItemRight}>
+                    <Text
+                      style={[
+                        styles.walletDropdownItemBalance,
+                        {
+                          color: (wallet.balanceCents || 0) >= 0
+                            ? (isDark ? '#FFFFFF' : '#17233C')
+                            : theme.colors.expense,
+                          fontWeight: isSelected ? '700' : '500',
+                        },
+                      ]}
+                    >
+                      {isBalanceHidden ? (
+                        '••••'
+                      ) : (
+                        <CurrencyText amountCents={wallet.balanceCents || 0} currency={currency} />
+                      )}
+                    </Text>
+                    {isSelected && (
+                      <Text
+                        style={[
+                          styles.walletDropdownItemCheck,
+                          { color: isDark ? '#4F8EF7' : '#1D5842' },
+                        ]}
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             })}
-          </View>
 
-          {wallets.length >= 2 && (
-            <TouchableOpacity
-              style={[
-                styles.manageWalletsBtn,
-                {
-                  marginTop: 8,
-                  backgroundColor: theme.colors.surfaceSubtle,
-                  borderColor: theme.colors.surfaceBorder,
-                },
-              ]}
-              onPress={() => {
-                setShowWalletModal(false);
-                navigation.navigate('QuickExpense', { tab: 'TRANSFER' });
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.manageWalletsBtnText, { color: '#6366F1' }]}>
-                🔄 Transfer Funds Between Wallets
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </BottomSheet>
+            {wallets.length >= 2 && (
+              <TouchableOpacity
+                style={[
+                  styles.walletDropdownTransferBtn,
+                  {
+                    borderTopColor: isDark ? '#263352' : '#F1F5F9',
+                  },
+                ]}
+                onPress={() => {
+                  setShowWalletModal(false);
+                  navigation.navigate('QuickExpense', { tab: 'TRANSFER' });
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.walletDropdownTransferText, { color: '#6366F1' }]}>
+                  🔄 Transfer Between Wallets
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </Screen>
   );
 };
@@ -533,51 +598,85 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  walletModalContent: {
-    paddingTop: 4,
-    paddingBottom: 8,
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
-  walletList: {
-    width: '100%',
+  walletDropdownMenu: {
+    position: 'absolute',
+    minWidth: 240,
+    maxWidth: 290,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 12,
+    zIndex: 9999,
   },
-  walletItemRow: {
+  walletDropdownHeader: {
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  walletDropdownTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  walletDropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginVertical: 2,
   },
-  walletItemLeft: {
+  walletDropdownItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
   },
-  walletItemName: {
-    fontSize: 15,
+  walletDropdownItemName: {
+    fontSize: 14,
     letterSpacing: -0.2,
   },
-  walletItemDefaultTag: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 1,
+  walletDefaultBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 5,
   },
-  walletItemBalance: {
-    fontSize: 14,
+  walletDefaultBadgeText: {
+    fontSize: 9,
+    fontWeight: '600',
   },
-  manageWalletsBtn: {
+  walletDropdownItemRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 10,
+    gap: 6,
+    marginLeft: 12,
   },
-  manageWalletsBtnText: {
-    fontSize: 14,
+  walletDropdownItemBalance: {
+    fontSize: 13,
+  },
+  walletDropdownItemCheck: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  walletDropdownTransferBtn: {
+    borderTopWidth: 1,
+    marginTop: 4,
+    paddingTop: 10,
+    paddingBottom: 6,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  walletDropdownTransferText: {
+    fontSize: 12,
     fontWeight: '700',
   },
   bellButton: {

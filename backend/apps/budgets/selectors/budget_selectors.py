@@ -97,3 +97,4 @@ def get_monthly_budgets_with_consumption(user, period_start: date) -> dict:
         "overallBudget": overall_budget_obj,
         "categoryBudgets": category_budgets,
     }
+
